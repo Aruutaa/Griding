@@ -65,7 +65,7 @@
           <div id="statusBox" class="alert">Gambar ROI dengan ikon polygon/rectangle di peta. Setelah selesai, status luas ROI akan berubah otomatis.</div>
           <div class="divider"></div>
           <div class="form-grid">
-            <div class="field"><label for="demSelect">DEM yang digunakan <span>sumber elevasi</span></label><select id="demSelect"><option value="srtm30m" selected>OpenTopoData SRTM 30 m</option><option value="srtm90m">OpenTopoData SRTM 90 m</option><option value="aster30m">OpenTopoData ASTER 30 m</option><option value="mapzen">OpenTopoData Mapzen Terrain</option><option value="csv">Upload CSV titik elevasi</option><option value="demo">Data demo datar untuk uji ROI</option></select></div>
+            <div class="field"><label for="demSelect">DEM yang digunakan <span>sumber elevasi</span></label><select id="demSelect"><option value="openmeteo" selected>Open-Meteo DEM (90 m, stabil)</option><option value="srtm30m">OpenTopoData SRTM 30 m</option><option value="srtm90m">OpenTopoData SRTM 90 m</option><option value="aster30m">OpenTopoData ASTER 30 m</option><option value="mapzen">OpenTopoData Mapzen Terrain</option><option value="csv">Upload CSV titik elevasi</option><option value="demo">Data demo datar untuk uji ROI</option></select></div>
             <div class="field hidden" id="csvField"><label for="csvInput">Upload CSV <span>lat/lon/elevasi</span></label><input type="file" id="csvInput" accept=".csv,text/csv" /><p class="hint">Kolom yang dikenali: lat/latitude/y, lon/lng/longitude/x, elevasi/elevation/z/dem.</p></div>
             <div class="two-cols"><div class="field"><label for="gridSelect">Gridding <span>bentuk grid</span></label><select id="gridSelect"><option value="point" selected>Point Grid</option><option value="square">Square Grid</option><option value="hex">Hexagonal Grid</option></select></div><div class="field"><label for="cellSizeSelect">Ukuran grid <span>meter</span></label><select id="cellSizeSelect"><option value="50">50 m</option><option value="100" selected>100 m</option><option value="150">150 m</option><option value="250">250 m</option><option value="500">500 m</option><option value="1000">1.000 m</option></select></div></div>
             <div class="field"><label for="interpolationSelect">Metode interpolasi <span>permukaan DEM</span></label><select id="interpolationSelect"><option value="idw" selected>IDW power 2</option><option value="nearest">Nearest Neighbor</option><option value="rbf">Minimum Curvature / RBF</option><option value="trend">Trend Surface Polynomial Orde 2</option></select></div>
@@ -101,7 +101,7 @@
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    const DEMS={srtm30m:{label:'OpenTopoData SRTM 30 m',api:'srtm30m'},srtm90m:{label:'OpenTopoData SRTM 90 m',api:'srtm90m'},aster30m:{label:'OpenTopoData ASTER 30 m',api:'aster30m'},mapzen:{label:'OpenTopoData Mapzen Terrain',api:'mapzen'},csv:{label:'CSV titik elevasi',api:null},demo:{label:'Data demo datar untuk uji ROI',api:null}};
+    const DEMS={openmeteo:{label:'Open-Meteo DEM (90 m, stabil)',api:'openmeteo'},srtm30m:{label:'OpenTopoData SRTM 30 m',api:'srtm30m'},srtm90m:{label:'OpenTopoData SRTM 90 m',api:'srtm90m'},aster30m:{label:'OpenTopoData ASTER 30 m',api:'aster30m'},mapzen:{label:'OpenTopoData Mapzen Terrain',api:'mapzen'},csv:{label:'Upload CSV titik elevasi',api:null},demo:{label:'Data demo datar untuk uji ROI',api:null}};
     const gridLabels={point:'Point Grid',square:'Square Grid',hex:'Hexagonal Grid'};
     const interpLabels={idw:'IDW power 2',nearest:'Nearest Neighbor',rbf:'Minimum Curvature / RBF',trend:'Trend Surface Orde 2'};
     const $=id=>document.getElementById(id);
@@ -148,9 +148,36 @@
     function limitPoints(pts,max){if(pts.length<=max)return pts;const out=[],step=(pts.length-1)/(max-1);for(let i=0;i<max;i++)out.push(pts[Math.round(i*step)]);return out}
     function limitFeatureCollection(fc,max){if(fc.features.length<=max)return fc;const out=[],step=(fc.features.length-1)/(max-1);for(let i=0;i<max;i++)out.push(fc.features[Math.round(i*step)]);return turf.featureCollection(out)}
 
-    async function fetchWithTimeout(url,timeoutMs=12000){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),timeoutMs);try{const res=await fetch(url,{signal:ctrl.signal});return res}finally{clearTimeout(tid)}}
-    async function fetchChunkWithRetry(url,maxRetry=3){let lastErr;for(let attempt=0;attempt<maxRetry;attempt++){try{const res=await fetchWithTimeout(url,12000);if(res.status===429){const wait=Math.pow(2,attempt+1)*1500;setStatus('API rate-limit, tunggu '+Math.round(wait/1000)+' detik lalu coba lagi...');await sleep(wait);continue}if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();if(!data.results)throw new Error('Format respons tidak valid');return data}catch(err){lastErr=err;if(err.name==='AbortError')lastErr=new Error('Request timeout (>12 detik). API mungkin sedang lambat.');if(attempt<maxRetry-1){const wait=Math.pow(2,attempt)*1200;setStatus('Percobaan '+(attempt+1)+' gagal ('+lastErr.message+'), coba ulang dalam '+Math.round(wait/1000)+' detik...');await sleep(wait)}}}throw lastErr}
-    async function getElevations(locations,params,bbox){if(params.demKey==='demo')return demoElevations(locations,bbox);if(params.demKey==='csv')return csvElevations(bbox);const CHUNK=90;const chunks=[];for(let i=0;i<locations.length;i+=CHUNK)chunks.push(locations.slice(i,i+CHUNK));const samples=[];const apiList=[params.dem.api,'aster30m','etopo1'];let apiIndex=0;for(let i=0;i<chunks.length;i++){const chunk=chunks[i];const locStr=chunk.map(p=>p.lat.toFixed(6)+','+p.lng.toFixed(6)).join('|');let chunkOk=false;for(let a=apiIndex;a<apiList.length;a++){const url='https://api.opentopodata.org/v1/'+apiList[a]+'?locations='+encodeURIComponent(locStr);try{setStatus('Mengambil elevasi chunk '+(i+1)+'/'+chunks.length+(a>0?' (fallback: '+apiList[a]+')':'')+'...');const data=await fetchChunkWithRetry(url,3);data.results.forEach((r,idx)=>{const z=Number(r.elevation);if(Number.isFinite(z)&&z>-500&&z<9000)samples.push({lng:chunk[idx].lng,lat:chunk[idx].lat,z,source:apiList[a]})});chunkOk=true;break}catch(err){if(a<apiList.length-1){setStatus('Dataset '+apiList[a]+' gagal, coba '+apiList[a+1]+'...');await sleep(800)}else{throw new Error('Semua dataset DEM online gagal: '+err.message+'. Coba upload CSV elevasi atau gunakan mode Demo.')}}}if(!chunkOk)break;if(i<chunks.length-1)await sleep(900)}if(samples.length<4&&chunks.length>0){throw new Error('Terlalu sedikit titik elevasi valid ('+samples.length+'). Coba upload CSV atau gunakan DEM lain.')}return removeElevationOutliers(samples)}
+    async function fetchWithTimeout(url,timeoutMs=15000){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),timeoutMs);try{const res=await fetch(url,{signal:ctrl.signal});return res}finally{clearTimeout(tid)}}
+
+    async function fetchOpenMeteo(chunk){const lats=chunk.map(p=>p.lat.toFixed(6)).join(',');const lngs=chunk.map(p=>p.lng.toFixed(6)).join(',');const url='https://api.open-meteo.com/v1/elevation?latitude='+encodeURIComponent(lats)+'&longitude='+encodeURIComponent(lngs);const res=await fetchWithTimeout(url,15000);if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();if(!data.elevation||!Array.isArray(data.elevation))throw new Error('Format Open-Meteo tidak valid');return data.elevation}
+
+    async function fetchOpenTopo(chunk,dataset,maxRetry=3){const locStr=chunk.map(p=>p.lat.toFixed(6)+','+p.lng.toFixed(6)).join('|');const url='https://api.opentopodata.org/v1/'+dataset+'?locations='+encodeURIComponent(locStr);let lastErr;for(let a=0;a<maxRetry;a++){try{const res=await fetchWithTimeout(url,12000);if(res.status===429){await sleep(Math.pow(2,a+1)*1500);continue}if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();if(!data.results)throw new Error('Format tidak valid');return data.results.map(r=>Number(r.elevation))}catch(err){lastErr=err;if(a<maxRetry-1)await sleep(Math.pow(2,a)*1200)}}throw lastErr}
+
+    async function getElevations(locations,params,bbox){
+      if(params.demKey==='demo')return demoElevations(locations,bbox);
+      if(params.demKey==='csv')return csvElevations(bbox);
+      const CHUNK=100;
+      const chunks=[];
+      for(let i=0;i<locations.length;i+=CHUNK)chunks.push(locations.slice(i,i+CHUNK));
+      const samples=[];
+      for(let i=0;i<chunks.length;i++){
+        const chunk=chunks[i];
+        setStatus('Mengambil elevasi chunk '+(i+1)+'/'+chunks.length+'...');
+        let elevs=null;
+        if(params.demKey==='openmeteo'){
+          try{elevs=await fetchOpenMeteo(chunk)}
+          catch(err){setStatus('Open-Meteo gagal ('+err.message+'), fallback ke OpenTopoData...');try{const r=await fetchOpenTopo(chunk,'srtm30m');elevs=r}catch(e2){throw new Error('Semua sumber DEM gagal: '+e2.message+'. Coba upload CSV atau mode Demo.')}}
+        }else{
+          try{elevs=await fetchOpenTopo(chunk,params.dem.api)}
+          catch(err){setStatus('OpenTopoData gagal ('+err.message+'), coba Open-Meteo...');try{elevs=await fetchOpenMeteo(chunk)}catch(e2){throw new Error('Semua sumber DEM gagal: '+e2.message+'. Coba upload CSV atau mode Demo.')}}
+        }
+        if(elevs){elevs.forEach((z,idx)=>{if(Number.isFinite(z)&&z>-500&&z<9000)samples.push({lng:chunk[idx].lng,lat:chunk[idx].lat,z,source:params.demKey})})}
+        if(i<chunks.length-1)await sleep(300);
+      }
+      if(samples.length<4)throw new Error('Titik elevasi valid kurang dari 4 ('+samples.length+'). Coba upload CSV atau gunakan mode Demo.');
+      return removeElevationOutliers(samples);
+    }
     function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
     function demoElevations(locations,bbox){const [w,s,e,n]=bbox,cy=(s+n)/2;return locations.map(p=>{const slope=(p.lat-cy)*80;const local=(pseudoNoise(p.lng*1000,p.lat*1000)-.5)*2.5;return{lng:p.lng,lat:p.lat,z:250+slope+local,source:'demo'}})}
     function csvElevations(bbox){if(!csvRows.length)throw new Error('CSV belum diupload. Pilih file CSV titik elevasi terlebih dahulu.');const pts=csvRows.filter(p=>p.lng>=bbox[0]&&p.lng<=bbox[2]&&p.lat>=bbox[1]&&p.lat<=bbox[3]&&isInsideRoi(p.lng,p.lat));if(pts.length<4)throw new Error('CSV tidak memiliki minimal 4 titik elevasi di dalam ROI.');return removeElevationOutliers(pts)}
