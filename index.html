@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebGIS Gridding & Interpolasi DEM</title>
+
+  <!-- CDN: aman untuk GitHub Pages karena seluruh proses berjalan di browser -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+  <style>
+    :root{
+      --bg:#06101c;
+      --card:rgba(17,28,53,.84);
+      --card2:rgba(11,18,33,.96);
+      --card3:rgba(255,255,255,.055);
+      --stroke:rgba(255,255,255,.13);
+      --text:#f4f8ff;
+      --muted:#9fb0c8;
+      --cyan:#62e6ff;
+      --blue:#7aa7ff;
+      --green:#70ffb8;
+      --yellow:#ffd166;
+      --red:#ff6b8b;
+      --purple:#b197fc;
+      --shadow:0 24px 70px rgba(0,0,0,.38);
+      --radius:24px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100vh;
+      background:
+        radial-gradient(circle at 15% 8%,rgba(98,230,255,.14),transparent 30%),
+        radial-gradient(circle at 82% 16%,rgba(122,167,255,.13),transparent 28%),
+        radial-gradient(circle at 65% 88%,rgba(112,255,184,.08),transparent 27%),
+        var(--bg);
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    a{color:inherit;text-decoration:none}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .shell{min-height:100vh}
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:999;
+      min-height:72px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      padding:0 24px;
+      background:rgba(4,8,18,.78);
+      border-bottom:1px solid var(--stroke);
+      backdrop-filter:blur(20px);
+    }
+    .brand{display:flex;align-items:center;gap:12px;min-width:220px}
+    .brand-mark{
+      width:42px;height:42px;border-radius:16px;
+      background:linear-gradient(135deg,var(--cyan),var(--blue));
+      box-shadow:0 0 24px rgba(98,230,255,.3);
+      position:relative;
+      flex:0 0 auto;
+    }
+    .brand-mark:after{
+      content:"";position:absolute;inset:11px;border-radius:50%;
+      border:3px solid rgba(7,12,25,.9)
+    }
+    .brand-text strong{display:block;font-size:15px;letter-spacing:.01em}
+    .brand-text span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+    .navlinks,.top-actions,.row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .navlinks a,.btn{
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:800;
+      transition:.18s ease;
+    }
+    .navlinks a:hover,.btn:hover{border-color:rgba(98,230,255,.42);transform:translateY(-1px)}
+    .navlinks a.active,.btn.primary{
+      background:linear-gradient(135deg,rgba(98,230,255,.22),rgba(122,167,255,.18));
+      border-color:rgba(98,230,255,.36);
+    }
+    .btn.success{background:linear-gradient(135deg,rgba(112,255,184,.18),rgba(98,230,255,.12));border-color:rgba(112,255,184,.36)}
+    .btn.warn{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.28)}
+    .btn.danger{background:rgba(255,107,139,.1);border-color:rgba(255,107,139,.28)}
+    .btn.block{width:100%;justify-content:center;text-align:center;display:inline-flex}
+    .btn:disabled{opacity:.58;cursor:not-allowed;transform:none}
+
+    .container{width:min(1380px,calc(100% - 32px));margin:0 auto;padding:28px 0 48px}
+    .hero{
+      display:grid;
+      grid-template-columns:minmax(0,1.55fr) minmax(320px,.78fr);
+      gap:18px;
+      align-items:stretch;
+      margin-bottom:18px;
+    }
+    .hero-main,.card{
+      background:var(--card);
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(18px);
+      overflow:hidden;
+    }
+    .hero-main{padding:24px;position:relative}
+    .hero-main:before{
+      content:"";position:absolute;inset:-35% -15% auto auto;width:360px;height:360px;border-radius:50%;
+      background:rgba(98,230,255,.09);filter:blur(8px);pointer-events:none;
+    }
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid rgba(98,230,255,.28);
+      background:rgba(98,230,255,.08);
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:12px;
+      font-weight:900;
+      color:#c8f8ff;
+    }
+    .pulse-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(112,255,184,.55);animation:pulse 1.8s infinite}
+    @keyframes pulse{70%{box-shadow:0 0 0 12px rgba(112,255,184,0)}100%{box-shadow:0 0 0 0 rgba(112,255,184,0)}}
+    h1{font-size:clamp(30px,4vw,54px);line-height:1.04;margin:16px 0 12px;letter-spacing:-.045em;max-width:900px}
+    .lead{font-size:15.5px;color:#c5d4ea;line-height:1.75;margin:0;max-width:840px}
+    .hero-actions{margin-top:18px}
+    .hero-note{padding:18px}
+    .hero-note h3,.card h3{margin:8px 0 6px;font-size:17px}
+    .hero-note p,.card p{margin:0;color:#c6d5ea;line-height:1.6;font-size:13px}
+    .icon{width:42px;height:42px;border-radius:16px;background:rgba(255,255,255,.06);display:grid;place-items:center;border:1px solid var(--stroke);font-size:20px}
+
+    .app-grid{
+      display:grid;
+      grid-template-columns:360px minmax(0,1fr);
+      gap:18px;
+      align-items:start;
+    }
+    .control-panel{
+      position:sticky;
+      top:92px;
+      padding:18px;
+      max-height:calc(100vh - 110px);
+      overflow:auto;
+      scrollbar-width:thin;
+      scrollbar-color:rgba(98,230,255,.5) rgba(255,255,255,.05);
+    }
+    .panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .panel-title h2{font-size:19px;line-height:1.2;margin:0;letter-spacing:-.02em}
+    .panel-title small{display:block;color:var(--muted);font-size:12px;margin-top:5px;line-height:1.45}
+    .form-grid{display:grid;gap:12px}
+    .field label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px;font-weight:900;color:#d7e5f8;margin-bottom:7px;text-transform:uppercase;letter-spacing:.045em}
+    .field label span{font-size:10px;color:var(--muted);font-weight:700;text-transform:none;letter-spacing:0}
+    .field select,.field input{
+      width:100%;height:44px;border-radius:14px;border:1px solid var(--stroke);
+      background:#101827;color:#fff;padding:0 12px;outline:none;
+    }
+    .field input[type="range"]{height:36px;padding:0;background:transparent}
+    .two-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .status-box{
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.045);
+      border-radius:18px;
+      padding:12px;
+      display:grid;
+      gap:8px;
+    }
+    .status-line{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#dce7f8;line-height:1.35}
+    .status-line b{color:#fff;text-align:right}
+    .divider{height:1px;background:var(--stroke);margin:14px 0}
+    .hint{font-size:12px;color:var(--muted);line-height:1.58;margin:10px 0 0}
+    .code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid var(--stroke);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:8px;color:#e8f5ff}
+
+    .map-card{padding:12px;min-height:720px;display:grid;grid-template-rows:auto minmax(560px,1fr) auto;gap:12px}
+    .map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 2px 0}
+    .map-toolbar h2{font-size:18px;margin:0;letter-spacing:-.02em}
+    .map-toolbar small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    #map{min-height:560px;width:100%;border-radius:22px;border:1px solid var(--stroke);overflow:hidden;background:#0b1221;z-index:1}
+    .map-caption{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+    }
+    .mini-stat{border:1px solid var(--stroke);background:rgba(255,255,255,.045);border-radius:16px;padding:12px}
+    .mini-stat span{display:block;font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+    .mini-stat b{display:block;font-size:18px;margin-top:6px;color:#fff}
+
+    .leaflet-container{font-family:Inter,system-ui,sans-serif;background:#0b1221}
+    .leaflet-control-layers,.leaflet-bar a,.leaflet-draw-toolbar a{background-color:#101827!important;color:#fff!important;border-color:rgba(255,255,255,.18)!important}
+    .leaflet-control-attribution{background:rgba(4,8,18,.68)!important;color:#dbeafe!important}
+    .leaflet-control-attribution a{color:#c8f8ff!important}
+    .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101827;color:#fff;border:1px solid rgba(255,255,255,.12)}
+
+    .section{margin-top:20px}
+    .hidden{display:none!important}
+    .results-head{padding:20px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+    .results-head h2{font-size:28px;letter-spacing:-.035em;margin:8px 0 7px}
+    .results-head p{max-width:780px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .result-card{padding:18px}
+    .result-card strong{font-size:30px;display:block;margin-top:8px;letter-spacing:-.03em}
+    .result-card span{font-size:12px;color:var(--muted)}
+    .result-card em{font-style:normal;font-size:12px;color:#cbd8ed;display:block;margin-top:6px;line-height:1.5}
+    .image-wrap{padding:18px}
+    .image-frame{border:1px solid var(--stroke);border-radius:20px;overflow:hidden;background:#08111f;min-height:280px;display:grid;place-items:center}
+    .image-frame img{width:100%;height:auto;display:block}
+    #surface3d{height:520px;border-radius:20px;overflow:hidden;border:1px solid var(--stroke);background:#08111f}
+    .narrative-box{font-size:14px;color:#d4e0f4;line-height:1.78;margin-top:10px}
+    .narrative-box b{color:#fff}
+    .table-wrap{width:100%;overflow:auto;border-radius:18px;border:1px solid var(--stroke);margin-top:14px}
+    table{width:100%;border-collapse:collapse;min-width:880px;background:rgba(255,255,255,.025)}
+    th,td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:12.5px;vertical-align:top}
+    th{color:#dbeafe;background:rgba(255,255,255,.055);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+    td{color:#d4e0f4}
+    .badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--stroke);background:rgba(255,255,255,.045);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;color:#e8f5ff}
+    .badge.high{border-color:rgba(255,107,139,.38);color:#ffd1db}
+    .badge.med{border-color:rgba(255,209,102,.38);color:#ffe8ad}
+    .badge.low{border-color:rgba(112,255,184,.32);color:#caffdf}
+    .footer{margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:24px;border-top:1px solid var(--stroke)}
+    .footer p{margin:.35rem 0 0;color:var(--muted);font-size:13px}
+
+    @media(max-width:1120px){
+      .hero,.app-grid,.grid-4,.grid-2{grid-template-columns:1fr}
+      .control-panel{position:relative;top:auto;max-height:none}
+      .map-card{min-height:auto}
+      #map{min-height:520px}
+      .map-caption{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:760px){
+      .topbar{padding:12px 16px;align-items:flex-start;flex-direction:column}
+      .navlinks{display:none}
+      .container{width:min(100% - 20px,1380px);padding-top:16px}
+      .hero-main,.control-panel,.result-card,.image-wrap,.hero-note{padding:14px}
+      .map-caption,.two-cols{grid-template-columns:1fr}
+      #surface3d{height:420px}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a href="#top" class="brand">
+        <div class="brand-mark"></div>
+        <div class="brand-text">
+          <strong>GeoGrid DEM Studio</strong>
+          <span>WebGIS Gridding & Interpolasi</span>
+        </div>
+      </a>
+      <nav class="navlinks">
+        <a class="active" href="#mapSection">Peta ROI</a>
+        <a href="#results">Hasil Analisis</a>
+        <a href="#surface3d">3D Surface</a>
+      </nav>
+      <div class="top-actions">
+        <button class="btn warn" id="sampleRoiTop">Buat ROI Contoh</button>
+        <button class="btn primary" id="runTop">Tampilkan Analisis</button>
+      </div>
+    </header>
+
+    <main class="container" id="top">
+      <section class="hero">
+        <div class="hero-main">
+          <div class="eyebrow"><span class="pulse-dot"></span> WebGIS berbasis Leaflet + Turf + Plotly</div>
+          <h1>Analisis gridding, interpolasi, output JPG, dan visualisasi 3D dari ROI.</h1>
+          <p class="lead">Buat ROI langsung di basemap online, pilih sumber DEM, tentukan metode gridding dan interpolasi, lalu klik <b>Tampilkan Analisis</b>. Hasil akan muncul otomatis di bawah peta dalam bentuk gambar JPG, ringkasan statistik, overlay interpolasi, dan surface 3D.</p>
+          <div class="row-actions hero-actions">
+            <a class="btn primary" href="#mapSection">Mulai dari Peta</a>
+            <button class="btn success" id="sampleRoiHero">Gunakan ROI Contoh</button>
+          </div>
+        </div>
+        <aside class="hero-note card">
+          <div class="icon">ⓘ</div>
+          <h3>Catatan penggunaan</h3>
+          <p>File ini dibuat sebagai <span class="code">index.html</span> tunggal sehingga bisa langsung masuk GitHub Pages. Untuk data DEM asli resolusi tinggi, bagian pengambilan DEM perlu disambungkan ke API atau backend. Versi ini sudah menjalankan simulasi DEM, gridding, interpolasi, JPG, dan 3D sepenuhnya di browser.</p>
+          <div class="divider"></div>
+          <div class="status-box">
+            <div class="status-line"><span>Status sistem</span><b>Frontend aktif</b></div>
+            <div class="status-line"><span>Library peta</span><b>Leaflet</b></div>
+            <div class="status-line"><span>Output</span><b>JPG + 3D</b></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="app-grid" id="mapSection">
+        <aside class="control-panel card">
+          <div class="panel-title">
+            <div>
+              <h2>Panel Analisis</h2>
+              <small>Atur ROI, DEM, gridding, interpolasi, dan resolusi output.</small>
+            </div>
+            <div class="icon">🎚️</div>
+          </div>
+
+          <div class="status-box" aria-live="polite">
+            <div class="status-line"><span>Luas ROI</span><b id="roiAreaText">Belum dibuat</b></div>
+            <div class="status-line"><span>Koordinat pusat</span><b id="roiCenterText">-</b></div>
+            <div class="status-line"><span>Jumlah titik sampel</span><b id="sampleCountText">-</b></div>
+            <div class="status-line"><span>Jumlah grid</span><b id="gridCountText">-</b></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="demSelect">DEM yang digunakan <span>sumber elevasi</span></label>
+              <select id="demSelect">
+                <option value="srtm">SRTM 30 m</option>
+                <option value="aster">ASTER GDEM 30 m</option>
+                <option value="nasadem">NASADEM 30 m</option>
+                <option value="cop30">Copernicus DEM 30 m</option>
+                <option value="cop90">Copernicus DEM 90 m</option>
+              </select>
+            </div>
+
+            <div class="two-cols">
+              <div class="field">
+                <label for="gridSelect">Gridding <span>bentuk grid</span></label>
+                <select id="gridSelect">
+                  <option value="square">Square Grid</option>
+                  <option value="hex">Hexagonal Grid</option>
+                  <option value="point">Point Grid</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="cellSizeSelect">Ukuran grid <span>meter</span></label>
+                <select id="cellSizeSelect">
+                  <option value="100">100 m</option>
+                  <option value="250" selected>250 m</option>
+                  <option value="500">500 m</option>
+                  <option value="1000">1.000 m</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="interpolationSelect">Metode interpolasi <span>permukaan DEM</span></label>
+              <select id="interpolationSelect">
+                <option value="idw">IDW - Inverse Distance Weighting</option>
+                <option value="nearest">Nearest Neighbor</option>
+                <option value="rbf">Spline/RBF Smoothing</option>
+                <option value="trend">Trend Surface</option>
+              </select>
+            </div>
+
+            <div class="two-cols">
+              <div class="field">
+                <label for="densitySelect">Kepadatan sampel <span>per sisi</span></label>
+                <select id="densitySelect">
+                  <option value="10">10 × 10</option>
+                  <option value="14" selected>14 × 14</option>
+                  <option value="18">18 × 18</option>
+                  <option value="24">24 × 24</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="qualitySelect">Resolusi JPG <span>output</span></label>
+                <select id="qualitySelect">
+                  <option value="900">Standar</option>
+                  <option value="1200" selected>Tinggi</option>
+                  <option value="1600">Sangat tinggi</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="opacityRange">Opasitas overlay <span id="opacityValue">65%</span></label>
+              <input id="opacityRange" type="range" min="20" max="90" value="65" />
+            </div>
+
+            <div class="two-cols">
+              <button class="btn success block" id="sampleRoiBtn">ROI Contoh</button>
+              <button class="btn danger block" id="clearRoiBtn">Hapus ROI</button>
+            </div>
+            <button class="btn primary block" id="runAnalysisBtn">Tampilkan Analisis</button>
+          </div>
+
+          <p class="hint">Cara pakai: klik ikon polygon/rectangle di peta, gambar batas ROI, lalu klik tombol analisis. Setelah proses selesai, halaman otomatis turun ke bagian hasil.</p>
+        </aside>
+
+        <section class="map-card card">
+          <div class="map-toolbar">
+            <div>
+              <h2>Peta ROI dan overlay hasil</h2>
+              <small>Basemap dapat diganti melalui layer control di pojok kanan atas peta.</small>
+            </div>
+            <div class="row-actions">
+              <button class="btn" id="fitRoiBtn">Zoom ke ROI</button>
+              <button class="btn primary" id="runMapBtn">Tampilkan Hasil</button>
+            </div>
+          </div>
+          <div id="map" aria-label="Peta WebGIS untuk menggambar ROI"></div>
+          <div class="map-caption">
+            <div class="mini-stat"><span>DEM aktif</span><b id="miniDem">SRTM 30 m</b></div>
+            <div class="mini-stat"><span>Interpolasi</span><b id="miniInterp">IDW</b></div>
+            <div class="mini-stat"><span>Grid aktif</span><b id="miniGrid">Square</b></div>
+            <div class="mini-stat"><span>Status hasil</span><b id="miniStatus">Belum dianalisis</b></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="section hidden" id="results">
+        <div class="card results-head">
+          <div>
+            <div class="eyebrow"><span class="pulse-dot"></span> Hasil analisis berhasil dibuat</div>
+            <h2>Output gridding dan interpolasi DEM</h2>
+            <p>Bagian ini baru muncul setelah tombol analisis diklik. Gambar di bawah dibuat dari ROI, parameter DEM, metode gridding, dan interpolasi yang dipilih.</p>
+          </div>
+          <div class="row-actions">
+            <a class="btn success" id="downloadJpg" href="#" download="hasil-analisis-gridding-interpolasi.jpg">Download JPG</a>
+            <button class="btn" id="copySummaryBtn">Salin Ringkasan</button>
+          </div>
+        </div>
+
+        <div class="section grid-4" id="metricCards"></div>
+
+        <div class="section grid-2">
+          <article class="card image-wrap">
+            <div class="icon">🖼️</div>
+            <h3>Output JPG analisis</h3>
+            <p>Gambar ini dapat langsung diunduh dan dimasukkan ke laporan, presentasi, atau dokumentasi analisis.</p>
+            <div class="image-frame" style="margin-top:14px"><img id="resultImage" alt="Output JPG hasil gridding dan interpolasi" /></div>
+          </article>
+
+          <article class="card image-wrap">
+            <div class="icon">⛰️</div>
+            <h3>Visualisasi 3D surface</h3>
+            <p>Surface 3D dibuat dari matriks elevasi hasil interpolasi pada ROI. Putar, zoom, dan geser grafik untuk melihat bentuk permukaan.</p>
+            <div id="surface3d" style="margin-top:14px"></div>
+          </article>
+        </div>
+
+        <div class="section grid-2">
+          <article class="card result-card">
+            <div class="icon">🧭</div>
+            <h3>Interpretasi hasil</h3>
+            <div class="narrative-box" id="narrativeText"></div>
+          </article>
+          <article class="card result-card">
+            <div class="icon">🧾</div>
+            <h3>Ringkasan teknis</h3>
+            <p>Parameter dan statistik utama yang dipakai pada proses analisis.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Parameter</th><th>Nilai</th><th>Keterangan</th></tr></thead>
+                <tbody id="summaryTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div>
+          <strong>GeoGrid DEM Studio</strong>
+          <p>Single-file WebGIS untuk ROI, gridding, interpolasi, JPG output, dan visualisasi 3D.</p>
+        </div>
+        <div class="row-actions">
+          <a class="btn" href="#top">Kembali ke atas</a>
+          <a class="btn primary" href="#mapSection">Ke peta</a>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <canvas id="workCanvas" class="hidden"></canvas>
+  <canvas id="overlayCanvas" class="hidden"></canvas>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <script>
+    const DEMS = {
+      srtm: {label:'SRTM 30 m', resolution:30, noise:8, relief:1.00, source:'SRTM 1 Arc-Second Global'},
+      aster: {label:'ASTER GDEM 30 m', resolution:30, noise:14, relief:1.08, source:'ASTER Global DEM'},
+      nasadem: {label:'NASADEM 30 m', resolution:30, noise:6, relief:0.96, source:'NASA NASADEM'},
+      cop30: {label:'Copernicus DEM 30 m', resolution:30, noise:5, relief:1.12, source:'Copernicus DEM GLO-30'},
+      cop90: {label:'Copernicus DEM 90 m', resolution:90, noise:3, relief:0.88, source:'Copernicus DEM GLO-90'}
+    };
+
+    const gridLabels = {square:'Square Grid', hex:'Hexagonal Grid', point:'Point Grid'};
+    const interpLabels = {idw:'IDW', nearest:'Nearest Neighbor', rbf:'Spline/RBF', trend:'Trend Surface'};
+
+    const els = {
+      map:null,
+      dem:document.getElementById('demSelect'),
+      grid:document.getElementById('gridSelect'),
+      cell:document.getElementById('cellSizeSelect'),
+      interp:document.getElementById('interpolationSelect'),
+      density:document.getElementById('densitySelect'),
+      quality:document.getElementById('qualitySelect'),
+      opacity:document.getElementById('opacityRange'),
+      opacityValue:document.getElementById('opacityValue'),
+      roiAreaText:document.getElementById('roiAreaText'),
+      roiCenterText:document.getElementById('roiCenterText'),
+      sampleCountText:document.getElementById('sampleCountText'),
+      gridCountText:document.getElementById('gridCountText'),
+      miniDem:document.getElementById('miniDem'),
+      miniInterp:document.getElementById('miniInterp'),
+      miniGrid:document.getElementById('miniGrid'),
+      miniStatus:document.getElementById('miniStatus'),
+      results:document.getElementById('results'),
+      metrics:document.getElementById('metricCards'),
+      resultImage:document.getElementById('resultImage'),
+      downloadJpg:document.getElementById('downloadJpg'),
+      narrative:document.getElementById('narrativeText'),
+      summaryTable:document.getElementById('summaryTable'),
+      workCanvas:document.getElementById('workCanvas'),
+      overlayCanvas:document.getElementById('overlayCanvas')
+    };
+
+    let drawnItems;
+    let roiLayer = null;
+    let roiFeature = null;
+    let overlayLayer = null;
+    let gridLayer = null;
+    let sampleLayer = null;
+    let lastAnalysis = null;
+
+    initMap();
+    bindEvents();
+    updateMiniLabels();
+
+    function initMap(){
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      });
+      const cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom:20,
+        attribution:'&copy; OpenStreetMap &copy; CARTO'
+      });
+      const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom:19,
+        attribution:'Tiles &copy; Esri'
+      });
+      const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom:17,
+        attribution:'&copy; OpenTopoMap'
+      });
+
+      els.map = L.map('map', {
+        center:[-7.7956,110.3695],
+        zoom:12,
+        layers:[osm],
+        zoomControl:true
+      });
+
+      const baseMaps = {
+        'OpenStreetMap':osm,
+        'CARTO Light':cartoLight,
+        'Esri Imagery':esri,
+        'OpenTopoMap':topo
+      };
+      L.control.layers(baseMaps, {}, {position:'topright', collapsed:true}).addTo(els.map);
+
+      drawnItems = new L.FeatureGroup();
+      els.map.addLayer(drawnItems);
+
+      const drawControl = new L.Control.Draw({
+        position:'topleft',
+        draw:{
+          marker:false,
+          circle:false,
+          circlemarker:false,
+          polyline:false,
+          polygon:{allowIntersection:false, showArea:true, shapeOptions:{color:'#62e6ff', weight:3, fillOpacity:.12}},
+          rectangle:{shapeOptions:{color:'#70ffb8', weight:3, fillOpacity:.10}}
+        },
+        edit:{featureGroup:drawnItems, remove:true}
+      });
+      els.map.addControl(drawControl);
+
+      els.map.on(L.Draw.Event.CREATED, (event) => {
+        setRoiLayer(event.layer);
+      });
+      els.map.on(L.Draw.Event.EDITED, () => syncRoiFromLayer());
+      els.map.on(L.Draw.Event.DELETED, () => clearRoi());
+    }
+
+    function bindEvents(){
+      const runButtons = ['runAnalysisBtn','runTop','runMapBtn'];
+      runButtons.forEach(id => document.getElementById(id).addEventListener('click', runAnalysis));
+      ['sampleRoiBtn','sampleRoiHero','sampleRoiTop'].forEach(id => document.getElementById(id).addEventListener('click', createSampleRoi));
+      document.getElementById('clearRoiBtn').addEventListener('click', clearRoi);
+      document.getElementById('fitRoiBtn').addEventListener('click', fitRoi);
+      document.getElementById('copySummaryBtn').addEventListener('click', copySummary);
+
+      [els.dem, els.grid, els.cell, els.interp, els.density, els.quality].forEach(el => {
+        el.addEventListener('change', () => {
+          updateMiniLabels();
+          if(lastAnalysis) runAnalysis(false);
+        });
+      });
+      els.opacity.addEventListener('input', () => {
+        els.opacityValue.textContent = els.opacity.value + '%';
+        if(overlayLayer){ overlayLayer.setOpacity(Number(els.opacity.value)/100); }
+      });
+    }
+
+    function updateMiniLabels(){
+      els.miniDem.textContent = DEMS[els.dem.value].label;
+      els.miniInterp.textContent = interpLabels[els.interp.value];
+      els.miniGrid.textContent = gridLabels[els.grid.value];
+    }
+
+    function setRoiLayer(layer){
+      drawnItems.clearLayers();
+      roiLayer = layer;
+      roiLayer.setStyle?.({color:'#62e6ff', weight:3, fillColor:'#62e6ff', fillOpacity:.12});
+      drawnItems.addLayer(roiLayer);
+      syncRoiFromLayer();
+      fitRoi();
+    }
+
+    function syncRoiFromLayer(){
+      const layers = drawnItems.getLayers();
+      if(!layers.length){ clearRoi(); return; }
+      roiLayer = layers[0];
+      roiFeature = roiLayer.toGeoJSON();
+      if(roiFeature.geometry.type === 'FeatureCollection') roiFeature = roiFeature.features[0];
+      updateRoiStats();
+      clearAnalysisLayers(false);
+      els.miniStatus.textContent = 'ROI siap';
+    }
+
+    function createSampleRoi(){
+      const coords = [
+        [-7.765,110.335],
+        [-7.752,110.397],
+        [-7.800,110.427],
+        [-7.838,110.392],
+        [-7.823,110.330]
+      ];
+      const layer = L.polygon(coords, {color:'#62e6ff', weight:3, fillColor:'#62e6ff', fillOpacity:.12});
+      setRoiLayer(layer);
+    }
+
+    function clearRoi(){
+      drawnItems.clearLayers();
+      roiLayer = null;
+      roiFeature = null;
+      lastAnalysis = null;
+      clearAnalysisLayers(true);
+      els.roiAreaText.textContent = 'Belum dibuat';
+      els.roiCenterText.textContent = '-';
+      els.sampleCountText.textContent = '-';
+      els.gridCountText.textContent = '-';
+      els.miniStatus.textContent = 'Belum dianalisis';
+      els.results.classList.add('hidden');
+    }
+
+    function clearAnalysisLayers(removeResult){
+      if(overlayLayer){ els.map.removeLayer(overlayLayer); overlayLayer = null; }
+      if(gridLayer){ els.map.removeLayer(gridLayer); gridLayer = null; }
+      if(sampleLayer){ els.map.removeLayer(sampleLayer); sampleLayer = null; }
+      if(removeResult){
+        els.resultImage.removeAttribute('src');
+        els.downloadJpg.removeAttribute('href');
+        const plot = document.getElementById('surface3d');
+        if(plot && window.Plotly) Plotly.purge(plot);
+      }
+    }
+
+    function fitRoi(){
+      if(roiLayer){ els.map.fitBounds(roiLayer.getBounds(), {padding:[32,32]}); }
+    }
+
+    function updateRoiStats(){
+      if(!roiFeature) return;
+      const areaM2 = turf.area(roiFeature);
+      const center = turf.center(roiFeature).geometry.coordinates;
+      els.roiAreaText.textContent = formatArea(areaM2);
+      els.roiCenterText.textContent = center[1].toFixed(5) + ', ' + center[0].toFixed(5);
+    }
+
+    function formatArea(areaM2){
+      if(areaM2 >= 1000000) return (areaM2/1000000).toFixed(2) + ' km²';
+      if(areaM2 >= 10000) return (areaM2/10000).toFixed(2) + ' ha';
+      return Math.round(areaM2).toLocaleString('id-ID') + ' m²';
+    }
+
+    function runAnalysis(autoScroll=true){
+      if(!roiFeature){
+        alert('Buat ROI terlebih dahulu dengan tool polygon/rectangle pada peta, atau klik tombol ROI Contoh.');
+        return;
+      }
+      const runBtn = document.getElementById('runAnalysisBtn');
+      const oldText = runBtn.textContent;
+      runBtn.disabled = true;
+      runBtn.textContent = 'Memproses...';
+      try{
+        updateMiniLabels();
+        clearAnalysisLayers(false);
+
+        const params = readParams();
+        const bbox = turf.bbox(roiFeature);
+        const samples = generateSamples(params, bbox);
+        if(samples.length < 4) throw new Error('ROI terlalu kecil atau sampel tidak cukup. Perbesar ROI atau ubah kepadatan sampel.');
+
+        const model = buildInterpolationModel(samples, params, bbox);
+        const gridFeatureCollection = buildGrid(params, bbox);
+        const stats = computeSurfaceStats(model, bbox, 46);
+        const overlayPng = renderOverlay(model, bbox, stats, params);
+        overlayLayer = L.imageOverlay(overlayPng, [[bbox[1],bbox[0]],[bbox[3],bbox[2]]], {opacity:Number(els.opacity.value)/100, interactive:false}).addTo(els.map);
+
+        drawGridLayer(gridFeatureCollection, params);
+        drawSampleLayer(samples);
+
+        const jpg = renderReportJpg(model, bbox, stats, params, samples, gridFeatureCollection.features.length);
+        els.resultImage.src = jpg;
+        els.downloadJpg.href = jpg;
+
+        lastAnalysis = {params,bbox,samples,stats,gridCount:gridFeatureCollection.features.length};
+        updateResultUi(lastAnalysis);
+        render3D(model, bbox, stats, params);
+        updateRoiStats();
+        els.sampleCountText.textContent = samples.length.toLocaleString('id-ID');
+        els.gridCountText.textContent = gridFeatureCollection.features.length.toLocaleString('id-ID');
+        els.miniStatus.textContent = 'Hasil tampil';
+        els.results.classList.remove('hidden');
+
+        if(autoScroll){
+          setTimeout(() => els.results.scrollIntoView({behavior:'smooth', block:'start'}), 260);
+        }
+      }catch(err){
+        console.error(err);
+        alert(err.message || 'Analisis gagal dijalankan.');
+      }finally{
+        runBtn.disabled = false;
+        runBtn.textContent = oldText;
+      }
+    }
+
+    function readParams(){
+      return {
+        demKey:els.dem.value,
+        dem:DEMS[els.dem.value],
+        grid:els.grid.value,
+        cellSize:Number(els.cell.value),
+        interpolation:els.interp.value,
+        density:Number(els.density.value),
+        quality:Number(els.quality.value),
+        opacity:Number(els.opacity.value)/100
+      };
+    }
+
+    function generateSamples(params, bbox){
+      const samples = [];
+      const n = params.density;
+      const [west,south,east,north] = bbox;
+      for(let iy=0; iy<n; iy++){
+        for(let ix=0; ix<n; ix++){
+          const lng = west + (ix + .5) / n * (east - west);
+          const lat = south + (iy + .5) / n * (north - south);
+          if(isInsideRoi(lng, lat)) samples.push({lng,lat,z:syntheticElevation(lng, lat, params.dem)});
+        }
+      }
+
+      // Tambahan titik pada centroid dan vertex agar interpolasi tetap stabil pada ROI kecil.
+      const center = turf.center(roiFeature).geometry.coordinates;
+      if(isInsideRoi(center[0], center[1])) samples.push({lng:center[0], lat:center[1], z:syntheticElevation(center[0], center[1], params.dem)});
+      const rings = roiFeature.geometry.coordinates[0] || [];
+      rings.forEach(c => {
+        const lng = c[0], lat = c[1];
+        if(isFinite(lng) && isFinite(lat)) samples.push({lng,lat,z:syntheticElevation(lng, lat, params.dem)});
+      });
+      return samples;
+    }
+
+    function syntheticElevation(lng, lat, dem){
+      // Model elevasi deterministik untuk versi statis. Ganti fungsi ini dengan fetch API DEM jika menggunakan data real.
+      const x = (lng - 110.0) * 7.5;
+      const y = (lat + 8.0) * 7.5;
+      const ridge = 92 * Math.sin(x * 1.15) + 74 * Math.cos(y * 1.35) + 42 * Math.sin((x + y) * 1.85);
+      const slope = 180 * (lat + 8.25) + 42 * (lng - 110.25);
+      const noise = (pseudoNoise(lng * 31.13, lat * 27.71) - .5) * dem.noise;
+      const value = (135 + slope + ridge) * dem.relief + noise;
+      return Math.max(0, value);
+    }
+
+    function pseudoNoise(x,y){
+      const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
+      return s - Math.floor(s);
+    }
+
+    function isInsideRoi(lng, lat){
+      try{return turf.booleanPointInPolygon(turf.point([lng,lat]), roiFeature);}catch(e){return false;}
+    }
+
+    function buildInterpolationModel(samples, params, bbox){
+      const fitted = params.interpolation === 'trend' ? fitTrend(samples, bbox) : null;
+      const extentMeters = Math.max(bboxWidthMeters(bbox), bboxHeightMeters(bbox));
+      const sigma = Math.max(extentMeters / 4.2, params.cellSize * 2);
+      return function(lng, lat){
+        if(params.interpolation === 'nearest') return interpolateNearest(samples, lng, lat);
+        if(params.interpolation === 'rbf') return interpolateRbf(samples, lng, lat, sigma);
+        if(params.interpolation === 'trend') return interpolateTrend(fitted, lng, lat, bbox, samples);
+        return interpolateIdw(samples, lng, lat, 2.0);
+      };
+    }
+
+    function interpolateIdw(samples, lng, lat, power){
+      let num = 0, den = 0;
+      for(const p of samples){
+        const d = distanceMeters(lng, lat, p.lng, p.lat);
+        if(d < .25) return p.z;
+        const w = 1 / Math.pow(d, power);
+        num += w * p.z;
+        den += w;
+      }
+      return den ? num / den : 0;
+    }
+
+    function interpolateNearest(samples, lng, lat){
+      let nearest = samples[0], best = Infinity;
+      for(const p of samples){
+        const d = distanceMeters(lng, lat, p.lng, p.lat);
+        if(d < best){best = d; nearest = p;}
+      }
+      return nearest.z;
+    }
+
+    function interpolateRbf(samples, lng, lat, sigma){
+      let num = 0, den = 0;
+      for(const p of samples){
+        const d = distanceMeters(lng, lat, p.lng, p.lat);
+        const w = Math.exp(-(d*d)/(2*sigma*sigma));
+        num += w * p.z;
+        den += w;
+      }
+      return den ? num / den : interpolateIdw(samples, lng, lat, 2);
+    }
+
+    function fitTrend(samples, bbox){
+      const [west,south,east,north] = bbox;
+      const sx = 1/(east-west || 1);
+      const sy = 1/(north-south || 1);
+      let n=0, sx1=0, sy1=0, sxx=0, syy=0, sxy=0, sz=0, sxz=0, syz=0;
+      for(const p of samples){
+        const x = (p.lng - west) * sx;
+        const y = (p.lat - south) * sy;
+        n++; sx1 += x; sy1 += y; sxx += x*x; syy += y*y; sxy += x*y; sz += p.z; sxz += x*p.z; syz += y*p.z;
+      }
+      const A = [[n,sx1,sy1],[sx1,sxx,sxy],[sy1,sxy,syy]];
+      const B = [sz,sxz,syz];
+      const coef = solve3x3(A,B) || [sz/Math.max(n,1),0,0];
+      return {coef,bbox};
+    }
+
+    function interpolateTrend(fitted, lng, lat, bbox, samples){
+      const [west,south,east,north] = bbox;
+      const x = (lng - west) / (east-west || 1);
+      const y = (lat - south) / (north-south || 1);
+      const zTrend = fitted.coef[0] + fitted.coef[1]*x + fitted.coef[2]*y;
+      const zLocal = interpolateIdw(samples, lng, lat, 1.5);
+      return zTrend * .68 + zLocal * .32;
+    }
+
+    function solve3x3(A,B){
+      const m = A.map((row,i)=>[...row,B[i]]);
+      for(let i=0;i<3;i++){
+        let maxRow = i;
+        for(let k=i+1;k<3;k++) if(Math.abs(m[k][i]) > Math.abs(m[maxRow][i])) maxRow = k;
+        if(Math.abs(m[maxRow][i]) < 1e-12) return null;
+        [m[i],m[maxRow]] = [m[maxRow],m[i]];
+        const pivot = m[i][i];
+        for(let j=i;j<4;j++) m[i][j] /= pivot;
+        for(let k=0;k<3;k++){
+          if(k===i) continue;
+          const f = m[k][i];
+          for(let j=i;j<4;j++) m[k][j] -= f * m[i][j];
+        }
+      }
+      return [m[0][3],m[1][3],m[2][3]];
+    }
+
+    function distanceMeters(lng1, lat1, lng2, lat2){
+      const meanLat = ((lat1 + lat2) / 2) * Math.PI / 180;
+      const dx = (lng2 - lng1) * 111320 * Math.cos(meanLat);
+      const dy = (lat2 - lat1) * 110574;
+      return Math.sqrt(dx*dx + dy*dy) + .0001;
+    }
+
+    function bboxWidthMeters(bbox){return distanceMeters(bbox[0], (bbox[1]+bbox[3])/2, bbox[2], (bbox[1]+bbox[3])/2);}
+    function bboxHeightMeters(bbox){return distanceMeters((bbox[0]+bbox[2])/2, bbox[1], (bbox[0]+bbox[2])/2, bbox[3]);}
+
+    function computeSurfaceStats(model, bbox, n){
+      let min=Infinity,max=-Infinity,sum=0,count=0;
+      const [west,south,east,north] = bbox;
+      for(let iy=0; iy<n; iy++){
+        for(let ix=0; ix<n; ix++){
+          const lng = west + (ix + .5)/n * (east-west);
+          const lat = south + (iy + .5)/n * (north-south);
+          if(!isInsideRoi(lng,lat)) continue;
+          const z = model(lng,lat);
+          min = Math.min(min,z); max = Math.max(max,z); sum += z; count++;
+        }
+      }
+      const mean = count ? sum/count : 0;
+      return {min,max,mean,relief:max-min,count};
+    }
+
+    function buildGrid(params, bbox){
+      const sizeKm = params.cellSize / 1000;
+      const options = {units:'kilometers', mask:roiFeature};
+      let fc;
+      if(params.grid === 'hex') fc = turf.hexGrid(bbox, sizeKm, options);
+      else if(params.grid === 'point') fc = turf.pointGrid(bbox, sizeKm, options);
+      else fc = turf.squareGrid(bbox, sizeKm, options);
+
+      if(fc.features.length > 1200){
+        fc.features = fc.features.slice(0,1200);
+      }
+      return fc;
+    }
+
+    function drawGridLayer(fc, params){
+      const style = {color:'#ffffff', weight:.8, opacity:.42, fillOpacity:0};
+      if(params.grid === 'point'){
+        gridLayer = L.geoJSON(fc, {
+          pointToLayer:(feature, latlng)=>L.circleMarker(latlng,{radius:2.4,color:'#ffffff',weight:1,fillColor:'#62e6ff',fillOpacity:.85})
+        }).addTo(els.map);
+      }else{
+        gridLayer = L.geoJSON(fc, {style}).addTo(els.map);
+      }
+    }
+
+    function drawSampleLayer(samples){
+      const features = samples.slice(0,260).map(p => turf.point([p.lng,p.lat], {z:p.z}));
+      sampleLayer = L.geoJSON(turf.featureCollection(features), {
+        pointToLayer:(feature, latlng)=>L.circleMarker(latlng,{radius:3,color:'#06101c',weight:.8,fillColor:'#ffd166',fillOpacity:.9}),
+        onEachFeature:(feature, layer)=>layer.bindPopup('Sampel DEM: <b>'+feature.properties.z.toFixed(2)+' m</b>')
+      }).addTo(els.map);
+    }
+
+    function renderOverlay(model, bbox, stats, params){
+      const canvas = els.overlayCanvas;
+      canvas.width = 680;
+      canvas.height = 680;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawInterpolatedSurface(ctx, 0, 0, canvas.width, canvas.height, model, bbox, stats, 5, false);
+      drawRoiOutline(ctx, 0, 0, canvas.width, canvas.height, bbox, '#ffffff', 3);
+      return canvas.toDataURL('image/png');
+    }
+
+    function renderReportJpg(model, bbox, stats, params, samples, gridCount){
+      const canvas = els.workCanvas;
+      const W = params.quality;
+      const H = Math.round(W * .69);
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0,0,W,H);
+      grad.addColorStop(0,'#06101c');
+      grad.addColorStop(.55,'#0b1a30');
+      grad.addColorStop(1,'#10233d');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,W,H);
+
+      ctx.fillStyle = 'rgba(255,255,255,.035)';
+      for(let i=0;i<38;i++){
+        const x = (pseudoNoise(i, 2.1) * W);
+        const y = (pseudoNoise(i, 8.7) * H);
+        ctx.beginPath(); ctx.arc(x,y, pseudoNoise(i,5)*3+1, 0, Math.PI*2); ctx.fill();
+      }
+
+      const margin = Math.round(W * .035);
+      const headerH = Math.round(H * .11);
+      const mapX = margin;
+      const mapY = headerH;
+      const mapW = Math.round(W * .67);
+      const mapH = H - headerH - margin;
+      const sideX = mapX + mapW + margin;
+      const sideW = W - sideX - margin;
+
+      ctx.fillStyle = '#f4f8ff';
+      ctx.font = '900 ' + Math.round(W*.025) + 'px Inter, Arial, sans-serif';
+      ctx.fillText('Hasil Analisis Gridding dan Interpolasi DEM', margin, Math.round(H*.055));
+      ctx.font = '500 ' + Math.round(W*.0115) + 'px Inter, Arial, sans-serif';
+      ctx.fillStyle = '#b9c9df';
+      ctx.fillText('ROI berbasis polygon pada WebGIS • Output JPG otomatis • '+new Date().toLocaleString('id-ID'), margin, Math.round(H*.083));
+
+      roundRect(ctx,mapX,mapY,mapW,mapH,22,'rgba(255,255,255,.045)','rgba(255,255,255,.15)');
+      ctx.save();
+      roundedClip(ctx,mapX,mapY,mapW,mapH,22);
+      ctx.fillStyle = '#08111f'; ctx.fillRect(mapX,mapY,mapW,mapH);
+      drawInterpolatedSurface(ctx, mapX+14, mapY+14, mapW-28, mapH-28, model, bbox, stats, Math.max(3, Math.round(W/360)), true);
+      drawGridCanvas(ctx, mapX+14, mapY+14, mapW-28, mapH-28, bbox, params);
+      drawRoiOutline(ctx, mapX+14, mapY+14, mapW-28, mapH-28, bbox, '#ffffff', Math.max(2, W*.0025));
+      drawSamplePoints(ctx, mapX+14, mapY+14, mapW-28, mapH-28, bbox, samples, W);
+      ctx.restore();
+
+      roundRect(ctx, sideX, mapY, sideW, mapH, 22, 'rgba(255,255,255,.045)', 'rgba(255,255,255,.15)');
+      drawReportPanel(ctx, sideX, mapY, sideW, mapH, stats, params, samples, gridCount, W);
+
+      return canvas.toDataURL('image/jpeg', .93);
+    }
+
+    function drawInterpolatedSurface(ctx, x0, y0, w, h, model, bbox, stats, step, reportMode){
+      const [west,south,east,north] = bbox;
+      for(let py=0; py<h; py+=step){
+        for(let px=0; px<w; px+=step){
+          const lng = west + (px + step/2)/w * (east-west);
+          const lat = north - (py + step/2)/h * (north-south);
+          if(!isInsideRoi(lng,lat)){
+            if(reportMode){
+              ctx.fillStyle = 'rgba(255,255,255,.018)';
+              ctx.fillRect(x0+px,y0+py,step,step);
+            }
+            continue;
+          }
+          const z = model(lng,lat);
+          const t = (z - stats.min) / (stats.max - stats.min || 1);
+          ctx.fillStyle = colorRamp(t, reportMode ? 1 : .82);
+          ctx.fillRect(x0+px,y0+py,step+.5,step+.5);
+        }
+      }
+    }
+
+    function drawGridCanvas(ctx,x0,y0,w,h,bbox,params){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.35)';
+      ctx.lineWidth = 1;
+      const cols = Math.max(4, Math.min(60, Math.round(bboxWidthMeters(bbox)/params.cellSize)));
+      const rows = Math.max(4, Math.min(60, Math.round(bboxHeightMeters(bbox)/params.cellSize)));
+      if(params.grid === 'hex'){
+        const r = w / cols / 1.55;
+        const dy = r * Math.sqrt(3);
+        for(let y=y0; y<y0+h+r; y+=dy){
+          for(let x=x0; x<x0+w+r; x+=r*1.5){
+            drawHex(ctx, x + ((Math.round((y-y0)/dy)%2)*r*.75), y, r*.62);
+          }
+        }
+      }else if(params.grid === 'point'){
+        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        for(let i=0;i<=cols;i++) for(let j=0;j<=rows;j++){
+          ctx.beginPath(); ctx.arc(x0+i*w/cols, y0+j*h/rows, 1.4,0,Math.PI*2); ctx.fill();
+        }
+      }else{
+        for(let i=0;i<=cols;i++){ctx.beginPath();ctx.moveTo(x0+i*w/cols,y0);ctx.lineTo(x0+i*w/cols,y0+h);ctx.stroke();}
+        for(let j=0;j<=rows;j++){ctx.beginPath();ctx.moveTo(x0,y0+j*h/rows);ctx.lineTo(x0+w,y0+j*h/rows);ctx.stroke();}
+      }
+      ctx.restore();
+    }
+
+    function drawHex(ctx,cx,cy,r){
+      ctx.beginPath();
+      for(let i=0;i<6;i++){
+        const a = Math.PI/3*i + Math.PI/6;
+        const x = cx + r*Math.cos(a), y = cy + r*Math.sin(a);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath(); ctx.stroke();
+    }
+
+    function drawRoiOutline(ctx,x0,y0,w,h,bbox,color,lineWidth){
+      const rings = roiFeature.geometry.coordinates;
+      const ring = Array.isArray(rings[0][0][0]) ? rings[0][0] : rings[0];
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.shadowColor = 'rgba(0,0,0,.65)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ring.forEach((c,i)=>{
+        const p = lngLatToCanvas(c[0],c[1],x0,y0,w,h,bbox);
+        if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+      });
+      ctx.closePath(); ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSamplePoints(ctx,x0,y0,w,h,bbox,samples,W){
+      ctx.save();
+      ctx.fillStyle = '#ffd166';
+      ctx.strokeStyle = '#06101c';
+      ctx.lineWidth = Math.max(1,W*.001);
+      const maxPts = Math.min(samples.length, 230);
+      for(let i=0;i<maxPts;i++){
+        const p = samples[i];
+        const pos = lngLatToCanvas(p.lng,p.lat,x0,y0,w,h,bbox);
+        ctx.beginPath(); ctx.arc(pos.x,pos.y,Math.max(2,W*.0022),0,Math.PI*2); ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawReportPanel(ctx, x, y, w, h, stats, params, samples, gridCount, W){
+      const pad = Math.round(W*.018);
+      let cy = y + pad;
+      ctx.fillStyle = '#f4f8ff';
+      ctx.font = '900 ' + Math.round(W*.017) + 'px Inter, Arial, sans-serif';
+      ctx.fillText('Ringkasan Output', x+pad, cy);
+      cy += Math.round(W*.025);
+
+      const rows = [
+        ['DEM', params.dem.label],
+        ['Resolusi DEM', params.dem.resolution+' m'],
+        ['Gridding', gridLabels[params.grid]],
+        ['Ukuran grid', params.cellSize+' m'],
+        ['Interpolasi', interpLabels[params.interpolation]],
+        ['Luas ROI', formatArea(turf.area(roiFeature))],
+        ['Titik sampel', samples.length.toLocaleString('id-ID')],
+        ['Jumlah grid', gridCount.toLocaleString('id-ID')],
+        ['Elevasi min', stats.min.toFixed(2)+' m'],
+        ['Elevasi rerata', stats.mean.toFixed(2)+' m'],
+        ['Elevasi max', stats.max.toFixed(2)+' m'],
+        ['Relief', stats.relief.toFixed(2)+' m']
+      ];
+      ctx.font = '700 ' + Math.round(W*.0105) + 'px Inter, Arial, sans-serif';
+      rows.forEach((row,idx)=>{
+        const rowY = cy + idx * Math.round(W*.023);
+        ctx.fillStyle = idx % 2 === 0 ? 'rgba(255,255,255,.055)' : 'rgba(255,255,255,.025)';
+        roundedRectOnly(ctx, x+pad, rowY-Math.round(W*.015), w-pad*2, Math.round(W*.02), 9);
+        ctx.fill();
+        ctx.fillStyle = '#9fb0c8';
+        ctx.fillText(row[0], x+pad+10, rowY);
+        ctx.fillStyle = '#ffffff';
+        wrapText(ctx, row[1], x+w*.48, rowY, w*.43, Math.round(W*.012), 1);
+      });
+
+      const legendY = y + h - Math.round(W*.105);
+      ctx.fillStyle = '#f4f8ff';
+      ctx.font = '900 ' + Math.round(W*.012) + 'px Inter, Arial, sans-serif';
+      ctx.fillText('Legenda elevasi', x+pad, legendY);
+      const lgX = x+pad, lgY = legendY + Math.round(W*.018), lgW = w - pad*2, lgH = Math.round(W*.014);
+      for(let i=0;i<lgW;i++){
+        ctx.fillStyle = colorRamp(i/(lgW-1),1);
+        ctx.fillRect(lgX+i, lgY, 1, lgH);
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.24)'; ctx.strokeRect(lgX,lgY,lgW,lgH);
+      ctx.fillStyle = '#cbd8ed'; ctx.font = '700 ' + Math.round(W*.0095) + 'px Inter, Arial, sans-serif';
+      ctx.fillText(stats.min.toFixed(1)+' m', lgX, lgY+lgH+Math.round(W*.014));
+      ctx.textAlign = 'right'; ctx.fillText(stats.max.toFixed(1)+' m', lgX+lgW, lgY+lgH+Math.round(W*.014));
+      ctx.textAlign = 'left';
+    }
+
+    function lngLatToCanvas(lng, lat, x0, y0, w, h, bbox){
+      const [west,south,east,north] = bbox;
+      return {x:x0+(lng-west)/(east-west||1)*w, y:y0+(north-lat)/(north-south||1)*h};
+    }
+
+    function colorRamp(t, alpha=1){
+      t = Math.max(0,Math.min(1,t));
+      const stops = [
+        [0.00,[37,52,148]],
+        [0.22,[44,127,184]],
+        [0.45,[65,182,196]],
+        [0.64,[161,218,180]],
+        [0.82,[255,255,204]],
+        [1.00,[240,59,32]]
+      ];
+      for(let i=0;i<stops.length-1;i++){
+        const [a,ca] = stops[i], [b,cb] = stops[i+1];
+        if(t>=a && t<=b){
+          const u = (t-a)/(b-a || 1);
+          const r = Math.round(ca[0] + (cb[0]-ca[0])*u);
+          const g = Math.round(ca[1] + (cb[1]-ca[1])*u);
+          const bl = Math.round(ca[2] + (cb[2]-ca[2])*u);
+          return 'rgba('+r+','+g+','+bl+','+alpha+')';
+        }
+      }
+      return 'rgba(240,59,32,'+alpha+')';
+    }
+
+    function render3D(model, bbox, stats, params){
+      const n = 58;
+      const [west,south,east,north] = bbox;
+      const x = [], y = [], z = [];
+      for(let ix=0; ix<n; ix++) x.push(west + ix/(n-1)*(east-west));
+      for(let iy=0; iy<n; iy++) y.push(south + iy/(n-1)*(north-south));
+      for(let iy=0; iy<n; iy++){
+        const row = [];
+        const lat = y[iy];
+        for(let ix=0; ix<n; ix++){
+          const lng = x[ix];
+          row.push(isInsideRoi(lng,lat) ? Number(model(lng,lat).toFixed(2)) : null);
+        }
+        z.push(row);
+      }
+      const data = [{
+        type:'surface',
+        x:x,
+        y:y,
+        z:z,
+        colorscale:'Viridis',
+        contours:{z:{show:true,usecolormap:true,highlightcolor:'#ffffff',project:{z:true}}},
+        colorbar:{title:'Elevasi (m)', titleside:'right'}
+      }];
+      const layout = {
+        margin:{l:0,r:0,b:0,t:28},
+        paper_bgcolor:'#08111f',
+        plot_bgcolor:'#08111f',
+        font:{family:'Inter, Arial, sans-serif', color:'#dbeafe'},
+        title:{text:DEMS[params.demKey].label+' • '+interpLabels[params.interpolation], font:{size:14}},
+        scene:{
+          xaxis:{title:'Longitude', color:'#dbeafe', gridcolor:'rgba(255,255,255,.13)'},
+          yaxis:{title:'Latitude', color:'#dbeafe', gridcolor:'rgba(255,255,255,.13)'},
+          zaxis:{title:'Elevasi (m)', color:'#dbeafe', gridcolor:'rgba(255,255,255,.13)', range:[Math.max(0,stats.min-20), stats.max+20]},
+          camera:{eye:{x:1.45,y:1.45,z:.85}}
+        }
+      };
+      Plotly.newPlot('surface3d', data, layout, {responsive:true, displaylogo:false});
+    }
+
+    function updateResultUi(analysis){
+      const {params, stats, samples, gridCount} = analysis;
+      const area = turf.area(roiFeature);
+      const slopeClass = stats.relief > 160 ? 'Relief tinggi' : stats.relief > 80 ? 'Relief sedang' : 'Relief rendah';
+      els.metrics.innerHTML = `
+        <article class="card result-card"><div class="icon">🗺️</div><h3>Luas ROI</h3><strong>${formatArea(area)}</strong><span>Area polygon yang dianalisis</span><em>Nilai dihitung otomatis dari geometri ROI.</em></article>
+        <article class="card result-card"><div class="icon">⛰️</div><h3>Elevasi rerata</h3><strong>${stats.mean.toFixed(2)} m</strong><span>Hasil interpolasi pada ROI</span><em>Min ${stats.min.toFixed(2)} m dan max ${stats.max.toFixed(2)} m.</em></article>
+        <article class="card result-card"><div class="icon">▦</div><h3>Jumlah grid</h3><strong>${gridCount.toLocaleString('id-ID')}</strong><span>${gridLabels[params.grid]} ${params.cellSize} m</span><em>Grid dibatasi maksimal 1.200 fitur agar ringan di browser.</em></article>
+        <article class="card result-card"><div class="icon">📈</div><h3>Kelas relief</h3><strong>${slopeClass}</strong><span>Relief ${stats.relief.toFixed(2)} m</span><em>Digunakan untuk membaca variasi permukaan dalam ROI.</em></article>
+      `;
+
+      const methodNote = params.interpolation === 'idw'
+        ? 'IDW menekankan pengaruh titik terdekat sehingga cocok untuk permukaan yang berubah bertahap.'
+        : params.interpolation === 'nearest'
+          ? 'Nearest Neighbor mempertahankan nilai sampel terdekat sehingga hasilnya lebih bloky dan cocok untuk klasifikasi diskret.'
+          : params.interpolation === 'rbf'
+            ? 'Spline/RBF menghasilkan permukaan yang lebih halus karena bobotnya dibuat melemah secara radial.'
+            : 'Trend Surface membaca kecenderungan umum permukaan dan menggabungkannya dengan pengaruh lokal.';
+
+      els.narrative.innerHTML = `
+        ROI yang dipilih memiliki luas <b>${formatArea(area)}</b> dengan sumber DEM <b>${params.dem.label}</b>. Proses gridding menggunakan <b>${gridLabels[params.grid]}</b> berukuran <b>${params.cellSize} meter</b>, menghasilkan <b>${gridCount.toLocaleString('id-ID')}</b> grid dan <b>${samples.length.toLocaleString('id-ID')}</b> titik sampel DEM. Elevasi hasil interpolasi berada pada rentang <b>${stats.min.toFixed(2)}–${stats.max.toFixed(2)} meter</b> dengan rerata <b>${stats.mean.toFixed(2)} meter</b>. ${methodNote} Visualisasi 3D dapat digunakan untuk membaca bagian ROI yang relatif lebih tinggi, rendah, atau memiliki perubahan relief yang tajam.
+      `;
+
+      const rows = [
+        ['DEM', params.dem.label, params.dem.source],
+        ['Resolusi DEM', params.dem.resolution + ' m', 'Parameter metadata sumber DEM yang dipilih pada panel kiri.'],
+        ['Luas ROI', formatArea(area), 'Dihitung dari polygon ROI menggunakan Turf.js.'],
+        ['Metode gridding', gridLabels[params.grid], 'Bentuk grid yang ditampilkan pada peta dan output JPG.'],
+        ['Ukuran grid', params.cellSize + ' m', 'Semakin kecil ukuran grid, semakin rapat hasil gridding.'],
+        ['Metode interpolasi', interpLabels[params.interpolation], 'Metode pembentukan permukaan dari titik sampel DEM.'],
+        ['Titik sampel DEM', samples.length.toLocaleString('id-ID'), 'Titik dibuat otomatis di dalam ROI.'],
+        ['Elevasi minimum', stats.min.toFixed(2) + ' m', 'Nilai terendah pada matriks hasil interpolasi.'],
+        ['Elevasi maksimum', stats.max.toFixed(2) + ' m', 'Nilai tertinggi pada matriks hasil interpolasi.'],
+        ['Relief', stats.relief.toFixed(2) + ' m', 'Selisih elevasi maksimum dan minimum.']
+      ];
+      els.summaryTable.innerHTML = rows.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+    }
+
+    function copySummary(){
+      if(!lastAnalysis){ alert('Belum ada hasil untuk disalin.'); return; }
+      const {params, stats, samples, gridCount} = lastAnalysis;
+      const text = `Ringkasan WebGIS Gridding & Interpolasi\n`+
+        `DEM: ${params.dem.label}\n`+
+        `Luas ROI: ${formatArea(turf.area(roiFeature))}\n`+
+        `Gridding: ${gridLabels[params.grid]} ${params.cellSize} m\n`+
+        `Interpolasi: ${interpLabels[params.interpolation]}\n`+
+        `Titik sampel: ${samples.length}\n`+
+        `Jumlah grid: ${gridCount}\n`+
+        `Elevasi minimum: ${stats.min.toFixed(2)} m\n`+
+        `Elevasi rerata: ${stats.mean.toFixed(2)} m\n`+
+        `Elevasi maksimum: ${stats.max.toFixed(2)} m\n`+
+        `Relief: ${stats.relief.toFixed(2)} m`;
+      navigator.clipboard.writeText(text).then(()=>alert('Ringkasan berhasil disalin.')).catch(()=>alert(text));
+    }
+
+    function roundRect(ctx,x,y,w,h,r,fill,stroke){
+      roundedRectOnly(ctx,x,y,w,h,r);
+      if(fill){ctx.fillStyle=fill;ctx.fill();}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
+    }
+    function roundedRectOnly(ctx,x,y,w,h,r){
+      const rr = Math.min(r,w/2,h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr,y);
+      ctx.arcTo(x+w,y,x+w,y+h,rr);
+      ctx.arcTo(x+w,y+h,x,y+h,rr);
+      ctx.arcTo(x,y+h,x,y,rr);
+      ctx.arcTo(x,y,x+w,y,rr);
+      ctx.closePath();
+    }
+    function roundedClip(ctx,x,y,w,h,r){roundedRectOnly(ctx,x,y,w,h,r);ctx.clip();}
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines=2){
+      const words = String(text).split(' ');
+      let line = '', lines = 0;
+      for(let n=0;n<words.length;n++){
+        const test = line + words[n] + ' ';
+        if(ctx.measureText(test).width > maxWidth && n>0){
+          ctx.fillText(line.trim(),x,y);
+          line = words[n] + ' ';
+          y += lineHeight;
+          lines++;
+          if(lines>=maxLines-1) break;
+        }else line = test;
+      }
+      ctx.fillText(line.trim(),x,y);
+    }
+  </script>
+</body>
+</html>
