@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebGIS DEM | Gridding, Interpolasi, Kontur, dan 3D</title>
+  <title>GeoGrid DEM Studio | ROI, Gridding, Interpolasi, Kontur, 3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -11,624 +11,183 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <style>
     :root{
-      --bg:#06101c;--panel:#0a1424;--card:rgba(17,28,53,.84);--card2:rgba(13,24,44,.94);--stroke:rgba(255,255,255,.13);
-      --text:#f4f8ff;--muted:#9fb0c8;--cyan:#62e6ff;--blue:#7aa7ff;--green:#70ffb8;--yellow:#ffd166;--red:#ff6b8b;
-      --shadow:0 24px 70px rgba(0,0,0,.36);--radius:22px
+      --bg:#06101c;--card:rgba(17,28,53,.84);--card2:rgba(11,18,33,.96);--soft:rgba(255,255,255,.055);--stroke:rgba(255,255,255,.13);
+      --text:#f4f8ff;--muted:#9fb0c8;--cyan:#62e6ff;--blue:#7aa7ff;--green:#70ffb8;--yellow:#ffd166;--red:#ff6b8b;--shadow:0 24px 70px rgba(0,0,0,.38);--radius:24px;
     }
-    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;min-height:100vh;background:radial-gradient(circle at 12% 6%,rgba(98,230,255,.13),transparent 27%),radial-gradient(circle at 82% 10%,rgba(122,167,255,.12),transparent 30%),var(--bg);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
-    a{color:inherit;text-decoration:none} button,select,input{font:inherit} .shell{min-height:100vh}
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 8%,rgba(98,230,255,.14),transparent 30%),radial-gradient(circle at 82% 16%,rgba(122,167,255,.13),transparent 28%),radial-gradient(circle at 65% 88%,rgba(112,255,184,.08),transparent 27%),var(--bg);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);overflow-x:hidden}
+    a{color:inherit;text-decoration:none} button,input,select{font:inherit} button{cursor:pointer}.hidden{display:none!important}.shell{min-height:100vh}
     .topbar{position:sticky;top:0;z-index:999;min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 24px;background:rgba(4,8,18,.78);border-bottom:1px solid var(--stroke);backdrop-filter:blur(20px)}
-    .brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;border-radius:16px;background:linear-gradient(135deg,var(--cyan),var(--blue));box-shadow:0 0 24px rgba(98,230,255,.28);position:relative}.brand-mark:after{content:"";position:absolute;inset:11px;border-radius:50%;border:3px solid rgba(7,12,25,.9)}.brand-text strong{display:block;font-size:15px}.brand-text span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
-    .top-actions,.row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--stroke);background:rgba(255,255,255,.055);color:var(--text);padding:10px 14px;border-radius:999px;font-size:13px;font-weight:850;cursor:pointer;transition:.2s ease}.btn:hover{border-color:rgba(98,230,255,.38);transform:translateY(-1px)}.btn.primary{background:linear-gradient(135deg,rgba(98,230,255,.23),rgba(122,167,255,.18));border-color:rgba(98,230,255,.38)}.btn.danger{border-color:rgba(255,107,139,.35);color:#ffd1db}.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
-    .container{width:min(1420px,calc(100% - 28px));margin:0 auto;padding:26px 0 42px}.hero{display:grid;grid-template-columns:minmax(310px,420px) minmax(0,1fr);gap:18px;align-items:stretch}.card{background:var(--card);border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;backdrop-filter:blur(18px);overflow:hidden}.map-card{padding:0;min-height:650px;position:relative}.map{height:650px;width:100%;background:#0b1525}.eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(98,230,255,.28);background:rgba(98,230,255,.08);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900;color:#c8f8ff}.pulse-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(112,255,184,.55);animation:pulse 1.8s infinite}@keyframes pulse{70%{box-shadow:0 0 0 12px rgba(112,255,184,0)}100%{box-shadow:0 0 0 0 rgba(112,255,184,0)}}
-    h1{font-size:clamp(28px,3.8vw,48px);line-height:1.06;margin:16px 0 10px;letter-spacing:-.04em}h2{font-size:22px;margin:0 0 8px}h3{font-size:16px;margin:0 0 6px}.lead{font-size:14px;color:#c5d4ea;line-height:1.7;margin:0 0 14px}.muted{color:var(--muted)!important}.small{font-size:12px;color:var(--muted);line-height:1.55}.code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid var(--stroke);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:8px}.section{margin-top:18px}.form-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}.field label{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:900;color:#d7e5f8;margin-bottom:7px;letter-spacing:.02em;text-transform:uppercase}.field select,.field input[type="number"],.field input[type="file"]{width:100%;min-height:42px;border-radius:14px;border:1px solid var(--stroke);background:#101827;color:#fff;padding:0 12px;outline:none}.field input[type="range"]{width:100%}.field input[type="file"]{padding:10px 12px}.hint{font-size:11px;color:#9fb0c8;line-height:1.5;margin-top:6px}.summary-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}.summary-list li{display:flex;justify-content:space-between;gap:12px;border:1px solid var(--stroke);background:rgba(255,255,255,.045);padding:10px 12px;border-radius:14px;color:#dce7f8;font-size:12px}.summary-list b{color:white;text-align:right}.status{margin-top:14px;border:1px solid rgba(98,230,255,.25);background:rgba(98,230,255,.07);border-radius:16px;padding:12px;color:#c8f8ff;font-size:12px;line-height:1.55}.status.error{border-color:rgba(255,107,139,.4);background:rgba(255,107,139,.08);color:#ffd1db}.status.ok{border-color:rgba(112,255,184,.32);background:rgba(112,255,184,.08);color:#caffdf}.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.stat strong{font-size:28px;display:block;margin-top:8px}.stat span{font-size:12px;color:var(--muted)}.output-card{display:none}.output-card.show{display:block}.canvas-wrap{background:#07111f;border:1px solid var(--stroke);border-radius:20px;overflow:auto;padding:10px}.canvas-wrap canvas{display:block;max-width:100%;height:auto;border-radius:12px;background:#06101c}.plot3d{height:620px;border:1px solid var(--stroke);border-radius:20px;overflow:hidden;background:#06101c}.table-wrap{width:100%;overflow:auto;border-radius:18px;border:1px solid var(--stroke)}table{width:100%;border-collapse:collapse;min-width:880px;background:rgba(255,255,255,.025)}th,td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:12.5px;vertical-align:top}th{color:#dbeafe;background:rgba(255,255,255,.055);font-size:11px;text-transform:uppercase;letter-spacing:.04em}td{color:#d4e0f4}.rec-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.rec{border:1px solid var(--stroke);background:rgba(255,255,255,.045);border-radius:18px;padding:14px}.rec p{font-size:12.5px;color:#c6d5ea;line-height:1.6;margin:0}.tag{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;border:1px solid rgba(98,230,255,.3);color:#c8f8ff;background:rgba(98,230,255,.06);font-size:10.5px;font-weight:850;margin-bottom:10px}.leaflet-control-layers,.leaflet-bar a{background:#0d182c!important;color:#f4f8ff!important;border-color:rgba(255,255,255,.14)!important}.leaflet-control-attribution{background:rgba(4,8,18,.72)!important;color:#b6c5dc!important}.leaflet-draw-tooltip{display:none!important}
-    @media(max-width:1080px){.hero,.grid-4,.grid-2,.rec-grid{grid-template-columns:1fr}.map,.map-card{min-height:520px;height:520px}.topbar{padding:12px 16px;align-items:flex-start;flex-direction:column}.container{width:min(100% - 22px,1420px)}}
+    .brand{display:flex;align-items:center;gap:12px;min-width:220px}.brand-mark{width:42px;height:42px;border-radius:16px;background:linear-gradient(135deg,var(--cyan),var(--blue));box-shadow:0 0 24px rgba(98,230,255,.3);position:relative;flex:0 0 auto}.brand-mark:after{content:"";position:absolute;inset:11px;border-radius:50%;border:3px solid rgba(7,12,25,.9)}.brand-text strong{display:block;font-size:15px;letter-spacing:.01em}.brand-text span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+    .navlinks,.top-actions,.row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.navlinks a,.btn{border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--text);padding:10px 14px;border-radius:999px;font-size:13px;font-weight:800;transition:.18s ease}.navlinks a:hover,.btn:hover{border-color:rgba(98,230,255,.42);transform:translateY(-1px)}.navlinks a.active,.btn.primary{background:linear-gradient(135deg,rgba(98,230,255,.22),rgba(122,167,255,.18));border-color:rgba(98,230,255,.36)}.btn.success{background:linear-gradient(135deg,rgba(112,255,184,.18),rgba(98,230,255,.12));border-color:rgba(112,255,184,.36)}.btn.warn{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.28)}.btn.danger{background:rgba(255,107,139,.1);border-color:rgba(255,107,139,.28)}.btn.block{width:100%;justify-content:center;text-align:center;display:inline-flex}.btn:disabled{opacity:.58;cursor:not-allowed;transform:none}
+    .container{width:min(1380px,calc(100% - 32px));margin:0 auto;padding:28px 0 48px}.hero{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.78fr);gap:18px;align-items:stretch;margin-bottom:18px}.hero-main,.card{background:var(--card);border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(18px);overflow:hidden}.hero-main{padding:24px;position:relative}.hero-main:before{content:"";position:absolute;inset:-35% -15% auto auto;width:360px;height:360px;border-radius:50%;background:rgba(98,230,255,.09);filter:blur(8px);pointer-events:none}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(98,230,255,.28);background:rgba(98,230,255,.08);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900;color:#c8f8ff}.pulse-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(112,255,184,.55);animation:pulse 1.8s infinite}@keyframes pulse{70%{box-shadow:0 0 0 12px rgba(112,255,184,0)}100%{box-shadow:0 0 0 0 rgba(112,255,184,0)}}
+    h1{font-size:clamp(30px,4vw,54px);line-height:1.04;margin:16px 0 12px;letter-spacing:-.045em;max-width:900px}.lead{font-size:15.5px;color:#c5d4ea;line-height:1.75;margin:0;max-width:840px}.hero-actions{margin-top:18px}.hero-note{padding:18px}.hero-note h3,.card h3{margin:8px 0 6px;font-size:17px}.hero-note p,.card p{margin:0;color:#c6d5ea;line-height:1.6;font-size:13px}.icon{width:42px;height:42px;border-radius:16px;background:rgba(255,255,255,.06);display:grid;place-items:center;border:1px solid var(--stroke);font-size:20px}
+    .app-grid{display:grid;grid-template-columns:380px minmax(0,1fr);gap:18px;align-items:start}.control-panel{position:sticky;top:92px;padding:18px;max-height:calc(100vh - 110px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(98,230,255,.5) rgba(255,255,255,.05)}.panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.panel-title h2{font-size:19px;line-height:1.2;margin:0;letter-spacing:-.02em}.panel-title small{display:block;color:var(--muted);font-size:12px;margin-top:5px;line-height:1.45}.form-grid{display:grid;gap:12px}.field label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px;font-weight:900;color:#d7e5f8;margin-bottom:7px;text-transform:uppercase;letter-spacing:.045em}.field label span{font-size:10px;color:var(--muted);font-weight:700;text-transform:none;letter-spacing:0}.field select,.field input{width:100%;height:44px;border-radius:14px;border:1px solid var(--stroke);background:#101827;color:#fff;padding:0 12px;outline:none}.field input[type="range"]{height:36px;padding:0;background:transparent}.field input[type="file"]{padding:10px 12px;height:auto}.two-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status-box{border:1px solid var(--stroke);background:rgba(255,255,255,.045);border-radius:18px;padding:12px;display:grid;gap:8px}.status-line{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#dce7f8;line-height:1.35}.status-line b{color:#fff;text-align:right}.divider{height:1px;background:var(--stroke);margin:14px 0}.hint{font-size:12px;color:var(--muted);line-height:1.58;margin:10px 0 0}.code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid var(--stroke);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:8px;color:#e8f5ff}.alert{border:1px solid rgba(98,230,255,.25);background:rgba(98,230,255,.08);border-radius:16px;padding:11px 12px;color:#c8f8ff;font-size:12px;line-height:1.55;margin-top:12px}.alert.error{border-color:rgba(255,107,139,.45);background:rgba(255,107,139,.08);color:#ffd1db}.alert.ok{border-color:rgba(112,255,184,.38);background:rgba(112,255,184,.08);color:#caffdf}
+    .map-card{padding:12px;min-height:720px;display:grid;grid-template-rows:auto minmax(560px,1fr) auto;gap:12px}.map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 2px 0}.map-toolbar h2{font-size:18px;margin:0;letter-spacing:-.02em}.map-toolbar small{display:block;color:var(--muted);font-size:12px;margin-top:3px}#map{min-height:560px;width:100%;border-radius:22px;border:1px solid var(--stroke);overflow:hidden;background:#0b1221;z-index:1}.map-caption{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mini-stat{border:1px solid var(--stroke);background:rgba(255,255,255,.045);border-radius:16px;padding:12px}.mini-stat span{display:block;font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.mini-stat b{display:block;font-size:18px;margin-top:6px;color:#fff}.leaflet-container{font-family:Inter,system-ui,sans-serif;background:#0b1221}.leaflet-control-layers,.leaflet-bar a,.leaflet-draw-toolbar a{background-color:#101827!important;color:#fff!important;border-color:rgba(255,255,255,.18)!important}.leaflet-control-attribution{background:rgba(4,8,18,.68)!important;color:#dbeafe!important}.leaflet-control-attribution a{color:#c8f8ff!important}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101827;color:#fff;border:1px solid rgba(255,255,255,.12)}
+    .section{margin-top:20px}.results-head{padding:20px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}.results-head h2{font-size:28px;letter-spacing:-.035em;margin:8px 0 7px}.results-head p{max-width:780px}.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.result-card{padding:18px}.result-card strong{font-size:30px;display:block;margin-top:8px;letter-spacing:-.03em}.result-card span{font-size:12px;color:var(--muted)}.result-card em{font-style:normal;font-size:12px;color:#cbd8ed;display:block;margin-top:6px;line-height:1.5}.image-wrap{padding:18px}.image-frame{border:1px solid var(--stroke);border-radius:20px;overflow:hidden;background:#08111f;min-height:280px;display:grid;place-items:center}.image-frame img{width:100%;height:auto;display:block}#surface3d{height:540px;border-radius:20px;overflow:hidden;border:1px solid var(--stroke);background:#08111f}.narrative-box{font-size:14px;color:#d4e0f4;line-height:1.78;margin-top:10px}.narrative-box b{color:#fff}.table-wrap{width:100%;overflow:auto;border-radius:18px;border:1px solid var(--stroke);margin-top:14px}table{width:100%;border-collapse:collapse;min-width:880px;background:rgba(255,255,255,.025)}th,td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:12.5px;vertical-align:top}th{color:#dbeafe;background:rgba(255,255,255,.055);font-size:11px;text-transform:uppercase;letter-spacing:.04em}td{color:#d4e0f4}.footer{margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:24px;border-top:1px solid var(--stroke)}.footer p{margin:.35rem 0 0;color:var(--muted);font-size:13px}
+    @media(max-width:1120px){.hero,.app-grid,.grid-4,.grid-2{grid-template-columns:1fr}.control-panel{position:relative;top:auto;max-height:none}.map-card{min-height:auto}#map{min-height:520px}.map-caption{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.topbar{padding:12px 16px;align-items:flex-start;flex-direction:column}.navlinks{display:none}.container{width:min(100% - 20px,1380px);padding-top:16px}.hero-main,.control-panel,.result-card,.image-wrap,.hero-note{padding:14px}.map-caption,.two-cols{grid-template-columns:1fr}#surface3d{height:420px}}
   </style>
 </head>
 <body>
   <div class="shell">
     <header class="topbar">
-      <a href="#" class="brand"><div class="brand-mark"></div><div class="brand-text"><strong>DEM Interpolation WebGIS</strong><span>ROI · Gridding · Interpolasi · Kontur · 3D</span></div></a>
-      <div class="top-actions"><button class="btn" id="btnExampleRoi">ROI Contoh Sleman</button><button class="btn danger" id="btnClear">Bersihkan ROI</button><button class="btn primary" id="btnRunTop">Tampilkan Analisis</button></div>
+      <a href="#top" class="brand"><div class="brand-mark"></div><div class="brand-text"><strong>GeoGrid DEM Studio</strong><span>WebGIS Gridding & Interpolasi</span></div></a>
+      <nav class="navlinks"><a class="active" href="#mapSection">Peta ROI</a><a href="#results">Hasil Analisis</a><a href="#surface3d">3D Surface</a></nav>
+      <div class="top-actions"><button class="btn warn" id="sampleRoiTop">Buat ROI Contoh</button><button class="btn primary" id="runTop">Tampilkan Analisis</button></div>
     </header>
 
-    <main class="container">
+    <main class="container" id="top">
       <section class="hero">
-        <aside class="card">
-          <div class="eyebrow"><span class="pulse-dot"></span> Panel Analisis DEM</div>
-          <h1>Analisis gridding dan interpolasi berbasis ROI.</h1>
-          <p class="lead">Alur web ini disesuaikan dengan notebook: data titik elevasi disiapkan, dibuat grid 100×100/lebih, dihitung interpolasi, lalu divisualkan dengan <span class="code">contourf</span>, titik sampel, colorbar, dan surface 3D.</p>
-
-          <div class="form-grid">
-            <div class="field">
-              <label for="demSource">Sumber DEM / Titik Elevasi</label>
-              <select id="demSource">
-                <option value="srtm30m" selected>OpenTopoData SRTM 30 m</option>
-                <option value="srtm90m">OpenTopoData SRTM 90 m</option>
-                <option value="aster30m">OpenTopoData ASTER 30 m</option>
-                <option value="mapzen">OpenTopoData Mapzen Terrain</option>
-                <option value="csv">Upload CSV titik elevasi</option>
-                <option value="notebook">Data uji notebook Sleman</option>
-              </select>
-              <div class="hint">Tidak ada fallback elevasi sintetis. Kalau DEM online gagal, analisis dihentikan agar area datar tidak berubah menjadi gunung palsu.</div>
-            </div>
-
-            <div class="field" id="csvField" style="display:none">
-              <label for="csvFile">CSV latitude, longitude, elevasi</label>
-              <input type="file" id="csvFile" accept=".csv,.txt" />
-              <div class="hint">Kolom yang terbaca: <span class="code">latitude/lat/y</span>, <span class="code">longitude/lon/lng/x</span>, <span class="code">elevasi/elevation/z</span>.</div>
-            </div>
-
-            <div class="field">
-              <label for="gridMethod">Metode Gridding</label>
-              <select id="gridMethod">
-                <option value="point" selected>Point Grid / Titik sampel</option>
-                <option value="square">Square Grid / Grid kotak</option>
-                <option value="hex">Hexagonal Grid / Grid heksagon</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="gridSize">Ukuran Grid <b><span id="gridSizeVal">150</span> m</b></label>
-              <input type="range" id="gridSize" min="50" max="600" step="25" value="150" />
-              <div class="hint">Untuk area gunung gunakan 75–150 m. Untuk area datar gunakan 150–300 m agar tidak terlalu bising.</div>
-            </div>
-
-            <div class="field">
-              <label for="interpMethod">Metode Interpolasi</label>
-              <select id="interpMethod">
-                <option value="idw" selected>IDW power 2</option>
-                <option value="kriging">Ordinary Kriging linear</option>
-                <option value="rbf">Minimum Curvature Spline / RBF thin plate</option>
-                <option value="trend">Trend Surface Polynomial Orde 2</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="rasterRes">Resolusi Raster <b><span id="rasterResVal">120</span> sel</b></label>
-              <input type="range" id="rasterRes" min="70" max="190" step="10" value="120" />
-              <div class="hint">Semakin tinggi semakin halus, tetapi proses lebih berat terutama untuk Kriging.</div>
-            </div>
-
-            <div class="field">
-              <label for="maxSamples">Batas Sampel DEM <b><span id="maxSamplesVal">500</span> titik</b></label>
-              <input type="range" id="maxSamples" min="80" max="1200" step="20" value="500" />
-            </div>
-
-            <div class="field">
-              <label for="smoothLevel">Smoothing Raster</label>
-              <select id="smoothLevel">
-                <option value="0">Tanpa smoothing</option>
-                <option value="1" selected>Ringan, seperti contourf halus</option>
-                <option value="2">Sedang, untuk DEM agak bising</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="contourCount">Jumlah Kontur <b><span id="contourCountVal">20</span> level</b></label>
-              <input type="range" id="contourCount" min="8" max="35" step="1" value="20" />
-            </div>
-
-            <div class="field">
-              <label for="zExag">Vertical Exaggeration</label>
-              <select id="zExag">
-                <option value="0.5">0.5×</option>
-                <option value="1" selected>1× natural</option>
-                <option value="1.5">1.5×</option>
-                <option value="2">2×</option>
-                <option value="3">3×</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="outputSize">Resolusi JPG</label>
-              <select id="outputSize">
-                <option value="1800">1800 px</option>
-                <option value="2400" selected>2400 px</option>
-                <option value="3000">3000 px</option>
-              </select>
-            </div>
-          </div>
-
-          <ul class="summary-list" id="summaryList"></ul>
-          <div class="row-actions" style="margin-top:14px"><button class="btn primary" id="btnRun">Tampilkan Analisis</button><a class="btn" href="#results">Ke Hasil</a></div>
-          <div class="status" id="statusBox">Gambar ROI dulu di peta. Gunakan polygon atau rectangle, lalu klik <b>Tampilkan Analisis</b>.</div>
+        <div class="hero-main">
+          <div class="eyebrow"><span class="pulse-dot"></span> Leaflet Draw + Turf + DEM online/CSV + Plotly</div>
+          <h1>Analisis gridding, interpolasi, output JPG, dan visualisasi 3D dari ROI.</h1>
+          <p class="lead">Versi ini diperbaiki pada bagian pembacaan ROI. Setiap polygon/rectangle yang digambar akan dinormalisasi menjadi GeoJSON Feature, dicek luasnya, dihitung bbox-nya, lalu dipakai sebagai mask untuk grid, sampel, raster, output JPG, overlay peta, dan surface 3D.</p>
+          <div class="row-actions hero-actions"><a class="btn primary" href="#mapSection">Mulai dari Peta</a><button class="btn success" id="sampleRoiHero">Gunakan ROI Contoh</button></div>
+        </div>
+        <aside class="hero-note card">
+          <div class="icon">✓</div><h3>Perbaikan utama</h3>
+          <p>Tidak ada lagi variabel ROI yang hanya tersimpan di satu event. Saat tombol analisis diklik, sistem mengambil ulang ROI aktif dari layer peta sehingga ROI tetap terbaca meskipun baru diedit, diganti, atau digambar ulang.</p>
+          <div class="divider"></div>
+          <div class="status-box"><div class="status-line"><span>Status ROI</span><b id="heroRoiStatus">Belum dibuat</b></div><div class="status-line"><span>Debug bbox</span><b id="heroBboxStatus">-</b></div><div class="status-line"><span>Validasi</span><b id="heroValidStatus">Menunggu</b></div></div>
         </aside>
+      </section>
 
-        <section class="card map-card">
-          <div id="map" class="map"></div>
+      <section class="app-grid" id="mapSection">
+        <aside class="control-panel card">
+          <div class="panel-title"><div><h2>Panel Analisis</h2><small>Atur ROI, DEM, gridding, interpolasi, dan resolusi output.</small></div><div class="icon">🎚️</div></div>
+          <div class="status-box" aria-live="polite">
+            <div class="status-line"><span>Luas ROI</span><b id="roiAreaText">Belum dibuat</b></div>
+            <div class="status-line"><span>Koordinat pusat</span><b id="roiCenterText">-</b></div>
+            <div class="status-line"><span>Jumlah vertex</span><b id="vertexCountText">-</b></div>
+            <div class="status-line"><span>Jumlah grid</span><b id="gridCountText">-</b></div>
+            <div class="status-line"><span>Titik sampel</span><b id="sampleCountText">-</b></div>
+          </div>
+          <div id="statusBox" class="alert">Gambar ROI dengan ikon polygon/rectangle di peta. Setelah selesai, status luas ROI akan berubah otomatis.</div>
+          <div class="divider"></div>
+          <div class="form-grid">
+            <div class="field"><label for="demSelect">DEM yang digunakan <span>sumber elevasi</span></label><select id="demSelect"><option value="srtm30m" selected>OpenTopoData SRTM 30 m</option><option value="srtm90m">OpenTopoData SRTM 90 m</option><option value="aster30m">OpenTopoData ASTER 30 m</option><option value="mapzen">OpenTopoData Mapzen Terrain</option><option value="csv">Upload CSV titik elevasi</option><option value="demo">Data demo datar untuk uji ROI</option></select></div>
+            <div class="field hidden" id="csvField"><label for="csvInput">Upload CSV <span>lat/lon/elevasi</span></label><input type="file" id="csvInput" accept=".csv,text/csv" /><p class="hint">Kolom yang dikenali: lat/latitude/y, lon/lng/longitude/x, elevasi/elevation/z/dem.</p></div>
+            <div class="two-cols"><div class="field"><label for="gridSelect">Gridding <span>bentuk grid</span></label><select id="gridSelect"><option value="point" selected>Point Grid</option><option value="square">Square Grid</option><option value="hex">Hexagonal Grid</option></select></div><div class="field"><label for="cellSizeSelect">Ukuran grid <span>meter</span></label><select id="cellSizeSelect"><option value="50">50 m</option><option value="100" selected>100 m</option><option value="150">150 m</option><option value="250">250 m</option><option value="500">500 m</option><option value="1000">1.000 m</option></select></div></div>
+            <div class="field"><label for="interpolationSelect">Metode interpolasi <span>permukaan DEM</span></label><select id="interpolationSelect"><option value="idw" selected>IDW power 2</option><option value="nearest">Nearest Neighbor</option><option value="rbf">Minimum Curvature / RBF</option><option value="trend">Trend Surface Polynomial Orde 2</option></select></div>
+            <div class="two-cols"><div class="field"><label for="sampleLimitSelect">Batas sampel <span>DEM</span></label><select id="sampleLimitSelect"><option value="60">60 titik</option><option value="90" selected>90 titik</option><option value="140">140 titik</option><option value="220">220 titik</option></select></div><div class="field"><label for="rasterSelect">Raster hasil <span>sel per sisi</span></label><select id="rasterSelect"><option value="80">80 × 80</option><option value="110" selected>110 × 110</option><option value="150">150 × 150</option><option value="190">190 × 190</option></select></div></div>
+            <div class="two-cols"><div class="field"><label for="smoothSelect">Smoothing <span>kontur</span></label><select id="smoothSelect"><option value="0">Tanpa smoothing</option><option value="1" selected>Ringan</option><option value="2">Sedang</option></select></div><div class="field"><label for="zExagSelect">3D Z scale <span>vertikal</span></label><select id="zExagSelect"><option value="0.5">0.5×</option><option value="1" selected>1× natural</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div></div>
+            <div class="two-cols"><div class="field"><label for="qualitySelect">Resolusi JPG <span>output</span></label><select id="qualitySelect"><option value="1400">1400 px</option><option value="1900" selected>1900 px</option><option value="2500">2500 px</option></select></div><div class="field"><label for="contourSelect">Kontur <span>jumlah level</span></label><select id="contourSelect"><option value="10">10 level</option><option value="15" selected>15 level</option><option value="20">20 level</option><option value="25">25 level</option></select></div></div>
+            <div class="field"><label for="opacityRange">Opasitas overlay <span id="opacityValue">65%</span></label><input id="opacityRange" type="range" min="20" max="90" value="65" /></div>
+            <div class="two-cols"><button class="btn success block" id="sampleRoiBtn">ROI Contoh</button><button class="btn danger block" id="clearRoiBtn">Hapus ROI</button></div>
+            <button class="btn primary block" id="runAnalysisBtn">Tampilkan Analisis</button>
+          </div>
+          <p class="hint">Untuk mengecek apakah ROI terbaca: setelah menggambar polygon/rectangle, bagian <b>Luas ROI</b>, <b>Koordinat pusat</b>, dan <b>Debug bbox</b> harus langsung terisi.</p>
+        </aside>
+        <section class="map-card card">
+          <div class="map-toolbar"><div><h2>Peta ROI dan overlay hasil</h2><small>Gunakan ikon polygon/rectangle di kiri peta. ROI aktif akan diberi outline cyan.</small></div><div class="row-actions"><button class="btn" id="fitRoiBtn">Zoom ke ROI</button><button class="btn primary" id="runMapBtn">Tampilkan Hasil</button></div></div>
+          <div id="map" aria-label="Peta WebGIS untuk menggambar ROI"></div>
+          <div class="map-caption"><div class="mini-stat"><span>DEM aktif</span><b id="miniDem">SRTM 30 m</b></div><div class="mini-stat"><span>Interpolasi</span><b id="miniInterp">IDW</b></div><div class="mini-stat"><span>Grid aktif</span><b id="miniGrid">Point</b></div><div class="mini-stat"><span>Status hasil</span><b id="miniStatus">Belum dianalisis</b></div></div>
         </section>
       </section>
 
-      <section class="section output-card" id="results">
-        <div class="card">
-          <div class="row-actions" style="justify-content:space-between;margin-bottom:12px">
-            <div><div class="eyebrow"><span class="pulse-dot"></span> Hasil Analisis</div><h2 style="margin-top:10px">Output JPG: interpolasi, kontur, titik sampel, dan batas ROI</h2><p class="lead">Output ini dibuat mengikuti pola visual pada notebook: <span class="code">contourf</span> sebagai raster warna, titik sampel sebagai scatter, garis kontur, grid, dan colorbar elevasi.</p></div>
-            <button class="btn primary" id="btnDownload" disabled>Download JPG</button>
-          </div>
-          <div class="canvas-wrap"><canvas id="analysisCanvas"></canvas></div>
-        </div>
+      <section class="section hidden" id="results">
+        <div class="card results-head"><div><div class="eyebrow"><span class="pulse-dot"></span> Hasil analisis berhasil dibuat</div><h2>Output gridding dan interpolasi DEM</h2><p>Gambar dibuat dari ROI aktif, titik sampel, raster interpolasi, kontur, grid, dan statistik elevasi.</p></div><div class="row-actions"><a class="btn success" id="downloadJpg" href="#" download="hasil-analisis-gridding-interpolasi.jpg">Download JPG</a><button class="btn" id="copySummaryBtn">Salin Ringkasan</button></div></div>
+        <div class="section grid-4" id="metricCards"></div>
+        <div class="section grid-2"><article class="card image-wrap"><div class="icon">🖼️</div><h3>Output JPG analisis</h3><p>Output seperti peta hasil interpolasi: raster warna, kontur, grid, sampel, ROI, dan colorbar elevasi.</p><div class="image-frame" style="margin-top:14px"><img id="resultImage" alt="Output JPG hasil gridding dan interpolasi" /></div></article><article class="card image-wrap"><div class="icon">⛰️</div><h3>Visualisasi 3D surface</h3><p>Surface 3D memakai raster yang sama dengan output JPG. Untuk ROI datar, aspek-Z otomatis dibuat rendah.</p><div id="surface3d" style="margin-top:14px"></div></article></div>
+        <div class="section grid-2"><article class="card result-card"><div class="icon">🧭</div><h3>Interpretasi hasil</h3><div class="narrative-box" id="narrativeText"></div></article><article class="card result-card"><div class="icon">🧾</div><h3>Ringkasan teknis</h3><p>Parameter dan statistik utama yang dipakai pada proses analisis.</p><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Nilai</th><th>Keterangan</th></tr></thead><tbody id="summaryTable"></tbody></table></div></article></div>
       </section>
-
-      <section class="section output-card" id="statsSection">
-        <div class="grid-4" id="statCards"></div>
-      </section>
-
-      <section class="section output-card" id="surfaceSection">
-        <div class="card">
-          <h2>Visualisasi 3D Surface</h2>
-          <p class="lead">Surface 3D memakai raster interpolasi yang sama dengan output JPG. Untuk ROI datar, tampilan dibuat natural dengan vertical exaggeration default 1× dan aspek-Z otomatis kecil.</p>
-          <div id="plot3d" class="plot3d"></div>
-        </div>
-      </section>
-
-      <section class="section output-card" id="detailSection">
-        <div class="grid-2">
-          <div class="card">
-            <h2>Ringkasan Parameter</h2>
-            <div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Nilai</th></tr></thead><tbody id="paramRows"></tbody></table></div>
-          </div>
-          <div class="card">
-            <h2>Narasi Interpretasi</h2>
-            <div class="rec-grid" id="interpretation"></div>
-          </div>
-        </div>
-      </section>
+      <footer class="footer"><div><strong>GeoGrid DEM Studio</strong><p>Single-file WebGIS untuk ROI, gridding, interpolasi, JPG output, dan visualisasi 3D.</p></div><div class="row-actions"><a class="btn" href="#top">Kembali ke atas</a><a class="btn primary" href="#mapSection">Ke peta</a></div></footer>
     </main>
   </div>
-
+  <canvas id="workCanvas" class="hidden"></canvas><canvas id="overlayCanvas" class="hidden"></canvas>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    const NOTEBOOK_POINTS = [
-      {lat:-7.738, lon:110.384, z:230}, {lat:-7.740, lon:110.386, z:235},
-      {lat:-7.742, lon:110.388, z:232}, {lat:-7.744, lon:110.390, z:238},
-      {lat:-7.746, lon:110.392, z:240}, {lat:-7.748, lon:110.394, z:245},
-      {lat:-7.750, lon:110.396, z:243}, {lat:-7.752, lon:110.398, z:247},
-      {lat:-7.754, lon:110.400, z:250}, {lat:-7.756, lon:110.402, z:255}
-    ];
+    const DEMS={srtm30m:{label:'OpenTopoData SRTM 30 m',api:'srtm30m'},srtm90m:{label:'OpenTopoData SRTM 90 m',api:'srtm90m'},aster30m:{label:'OpenTopoData ASTER 30 m',api:'aster30m'},mapzen:{label:'OpenTopoData Mapzen Terrain',api:'mapzen'},csv:{label:'CSV titik elevasi',api:null},demo:{label:'Data demo datar untuk uji ROI',api:null}};
+    const gridLabels={point:'Point Grid',square:'Square Grid',hex:'Hexagonal Grid'};
+    const interpLabels={idw:'IDW power 2',nearest:'Nearest Neighbor',rbf:'Minimum Curvature / RBF',trend:'Trend Surface Orde 2'};
+    const $=id=>document.getElementById(id);
+    const els={dem:$('demSelect'),grid:$('gridSelect'),cell:$('cellSizeSelect'),interp:$('interpolationSelect'),limit:$('sampleLimitSelect'),raster:$('rasterSelect'),smooth:$('smoothSelect'),zExag:$('zExagSelect'),quality:$('qualitySelect'),contour:$('contourSelect'),opacity:$('opacityRange'),opacityValue:$('opacityValue'),csvField:$('csvField'),csvInput:$('csvInput'),roiArea:$('roiAreaText'),center:$('roiCenterText'),vertex:$('vertexCountText'),gridCount:$('gridCountText'),sampleCount:$('sampleCountText'),miniDem:$('miniDem'),miniInterp:$('miniInterp'),miniGrid:$('miniGrid'),miniStatus:$('miniStatus'),status:$('statusBox'),heroRoi:$('heroRoiStatus'),heroBbox:$('heroBboxStatus'),heroValid:$('heroValidStatus'),results:$('results'),metrics:$('metricCards'),resultImage:$('resultImage'),download:$('downloadJpg'),narrative:$('narrativeText'),summaryTable:$('summaryTable'),workCanvas:$('workCanvas'),overlayCanvas:$('overlayCanvas')};
+    let map,drawnItems,roiLayer=null,roiFeature=null,overlayLayer=null,gridLayer=null,sampleLayer=null,lastAnalysis=null,csvRows=[];
+    initMap();bindEvents();updateMiniLabels();setTimeout(()=>map.invalidateSize(),250);
 
-    const $ = id => document.getElementById(id);
-    const state = { roiLayer:null, roiGeo:null, gridFeatures:null, samples:null, raster:null, canvasData:null, imageOverlay:null, gridLayer:null, sampleLayer:null, ref:null, lastParams:null };
+    function initMap(){
+      const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'});
+      const carto=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:20,attribution:'&copy; OpenStreetMap &copy; CARTO'});
+      const esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
+      const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenTopoMap'});
+      map=L.map('map',{center:[-7.7956,110.3695],zoom:12,layers:[osm],zoomControl:true});
+      L.control.layers({'OpenStreetMap':osm,'CARTO Light':carto,'Esri Imagery':esri,'OpenTopoMap':topo},{},{position:'topright',collapsed:true}).addTo(map);
+      drawnItems=new L.FeatureGroup().addTo(map);
+      const drawControl=new L.Control.Draw({position:'topleft',draw:{marker:false,circle:false,circlemarker:false,polyline:false,polygon:{allowIntersection:false,showArea:true,shapeOptions:{color:'#62e6ff',weight:3,fillOpacity:.12}},rectangle:{shapeOptions:{color:'#70ffb8',weight:3,fillOpacity:.10}}},edit:{featureGroup:drawnItems,remove:true}});
+      map.addControl(drawControl);
+      map.on(L.Draw.Event.CREATED,e=>setRoiLayer(e.layer));
+      map.on(L.Draw.Event.EDITED,e=>{let last=null;e.layers.eachLayer(l=>{last=l});if(last)setRoiLayer(last,true);else refreshRoiFromMap()});
+      map.on('draw:edited',()=>refreshRoiFromMap());
+      map.on(L.Draw.Event.DELETED,clearRoi);map.on('draw:deleted',clearRoi);
+    }
+    function bindEvents(){['runAnalysisBtn','runTop','runMapBtn'].forEach(id=>$(id).addEventListener('click',()=>runAnalysis(true)));['sampleRoiBtn','sampleRoiHero','sampleRoiTop'].forEach(id=>$(id).addEventListener('click',createSampleRoi));$('clearRoiBtn').addEventListener('click',clearRoi);$('fitRoiBtn').addEventListener('click',fitRoi);$('copySummaryBtn').addEventListener('click',copySummary);[els.dem,els.grid,els.cell,els.interp,els.limit,els.raster,els.smooth,els.zExag,els.quality,els.contour].forEach(el=>el.addEventListener('change',()=>{updateMiniLabels();els.csvField.classList.toggle('hidden',els.dem.value!=='csv');if(lastAnalysis) runAnalysis(false)}));els.opacity.addEventListener('input',()=>{els.opacityValue.textContent=els.opacity.value+'%';if(overlayLayer)overlayLayer.setOpacity(Number(els.opacity.value)/100)});els.csvInput.addEventListener('change',handleCsvUpload)}
+    function updateMiniLabels(){els.miniDem.textContent=DEMS[els.dem.value].label.replace('OpenTopoData ','');els.miniInterp.textContent=interpLabels[els.interp.value].split(' ')[0];els.miniGrid.textContent=gridLabels[els.grid.value].replace(' Grid','')}
+    function setStatus(msg,type=''){els.status.innerHTML=msg;els.status.className='alert '+type}
+    function setRoiLayer(layer,skipFit=false){drawnItems.clearLayers();roiLayer=layer;if(roiLayer.setStyle)roiLayer.setStyle({color:'#62e6ff',weight:3,fillColor:'#62e6ff',fillOpacity:.12});drawnItems.addLayer(roiLayer);refreshRoiFromMap();clearAnalysisLayers(false);if(!skipFit)fitRoi();}
+    function refreshRoiFromMap(){const layers=drawnItems.getLayers();if(!layers.length){roiLayer=null;roiFeature=null;updateRoiStats();return false}roiLayer=layers[layers.length-1];try{roiFeature=normalizeGeoJson(roiLayer.toGeoJSON(8));const val=validateRoi(roiFeature);if(!val.ok)throw new Error(val.msg);updateRoiStats();els.miniStatus.textContent='ROI terbaca';setStatus('ROI terbaca dengan benar. Luas, pusat, vertex, dan bbox sudah masuk ke sistem.', 'ok');return true}catch(err){console.error(err);roiFeature=null;updateRoiStats();setStatus('ROI belum valid: '+err.message,'error');return false}}
+    function normalizeGeoJson(gj){let f=gj;if(!f)throw new Error('layer ROI kosong');if(f.type==='FeatureCollection')f=f.features&&f.features[0];if(f.type!=='Feature')f={type:'Feature',properties:{},geometry:f};if(!f.geometry)throw new Error('geometry ROI tidak ditemukan');if(f.geometry.type==='MultiPolygon'){f={type:'Feature',properties:f.properties||{},geometry:{type:'Polygon',coordinates:f.geometry.coordinates[0]}}}if(f.geometry.type!=='Polygon')throw new Error('ROI harus berbentuk polygon atau rectangle');const rings=f.geometry.coordinates;if(!Array.isArray(rings)||!rings[0]||rings[0].length<4)throw new Error('koordinat polygon kurang dari 4 titik');const ring=rings[0].map(c=>[Number(c[0]),Number(c[1])]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));if(ring.length<4)throw new Error('koordinat polygon tidak valid');const first=ring[0],last=ring[ring.length-1];if(first[0]!==last[0]||first[1]!==last[1])ring.push([first[0],first[1]]);return {type:'Feature',properties:f.properties||{},geometry:{type:'Polygon',coordinates:[ring]}}}
+    function validateRoi(f){try{const area=turf.area(f);const bbox=turf.bbox(f);if(!Number.isFinite(area)||area<=0)return{ok:false,msg:'luas ROI 0'};if(area<50)return{ok:false,msg:'ROI terlalu kecil'};if(!bbox.every(Number.isFinite))return{ok:false,msg:'bbox ROI tidak valid'};return{ok:true}}catch(e){return{ok:false,msg:e.message}}}
+    function updateRoiStats(){if(!roiFeature){els.roiArea.textContent='Belum dibuat';els.center.textContent='-';els.vertex.textContent='-';els.heroRoi.textContent='Belum dibuat';els.heroBbox.textContent='-';els.heroValid.textContent='Menunggu';return}const area=turf.area(roiFeature),center=turf.center(roiFeature).geometry.coordinates,bbox=turf.bbox(roiFeature),ring=getOuterRing(roiFeature);els.roiArea.textContent=formatArea(area);els.center.textContent=center[1].toFixed(5)+', '+center[0].toFixed(5);els.vertex.textContent=Math.max(0,ring.length-1).toLocaleString('id-ID');els.heroRoi.textContent='Terbaca • '+formatArea(area);els.heroBbox.textContent=bbox.map(v=>v.toFixed(4)).join(', ');els.heroValid.textContent='Valid'}
+    function createSampleRoi(){const coords=[[-7.765,110.335],[-7.752,110.397],[-7.800,110.427],[-7.838,110.392],[-7.823,110.330]];setRoiLayer(L.polygon(coords,{color:'#62e6ff',weight:3,fillColor:'#62e6ff',fillOpacity:.12}))}
+    function clearRoi(){drawnItems.clearLayers();roiLayer=null;roiFeature=null;lastAnalysis=null;clearAnalysisLayers(true);els.gridCount.textContent='-';els.sampleCount.textContent='-';els.miniStatus.textContent='Belum dianalisis';els.results.classList.add('hidden');updateRoiStats();setStatus('ROI dibersihkan. Gambar ROI baru dengan polygon/rectangle di peta.','')}
+    function clearAnalysisLayers(removeResult){if(overlayLayer){map.removeLayer(overlayLayer);overlayLayer=null}if(gridLayer){map.removeLayer(gridLayer);gridLayer=null}if(sampleLayer){map.removeLayer(sampleLayer);sampleLayer=null}if(removeResult){els.resultImage.removeAttribute('src');els.download.removeAttribute('href');const plot=$('surface3d');if(plot&&window.Plotly)Plotly.purge(plot)}}
+    function fitRoi(){if(!refreshRoiFromMap())return;if(roiLayer&&roiLayer.getBounds)map.fitBounds(roiLayer.getBounds(),{padding:[32,32]})}
+    function formatArea(m2){if(m2>=1000000)return(m2/1000000).toFixed(2)+' km²';if(m2>=10000)return(m2/10000).toFixed(2)+' ha';return Math.round(m2).toLocaleString('id-ID')+' m²'}
+    function readParams(){return{demKey:els.dem.value,dem:DEMS[els.dem.value],grid:els.grid.value,cellSize:Number(els.cell.value),interpolation:els.interp.value,maxSamples:Number(els.limit.value),rasterN:Number(els.raster.value),smooth:Number(els.smooth.value),zExag:Number(els.zExag.value),quality:Number(els.quality.value),contours:Number(els.contour.value),opacity:Number(els.opacity.value)/100}}
 
-    const map = L.map('map', { zoomControl:true }).setView([-7.744, 110.392], 13);
-    const baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
-    const baseTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom:17, attribution:'&copy; OpenTopoMap' });
-    const baseCarto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom:19, attribution:'&copy; CARTO' });
-    const baseEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom:19, attribution:'Tiles &copy; Esri' });
-    L.control.layers({ 'OpenStreetMap':baseOSM, 'OpenTopoMap':baseTopo, 'CARTO Light':baseCarto, 'Esri Imagery':baseEsri }, null, { position:'topright' }).addTo(map);
+    async function runAnalysis(autoScroll=true){if(!refreshRoiFromMap()){alert('ROI belum terbaca. Gambar ROI memakai tool polygon/rectangle di peta, atau klik ROI Contoh.');return}const runBtn=$('runAnalysisBtn'),old=runBtn.textContent;try{runBtn.disabled=true;runBtn.textContent='Memproses...';updateMiniLabels();clearAnalysisLayers(false);const params=readParams();const bbox=turf.bbox(roiFeature);setStatus('Membuat grid dan titik sampel dari ROI...', '');const gridFc=buildGrid(params,bbox);let locations=sampleLocationsFromGrid(gridFc,params,bbox);locations=limitPoints(dedupePoints(locations),params.maxSamples);if(locations.length<4)throw new Error('Sampel di dalam ROI kurang. Perbesar ROI atau kecilkan ukuran grid.');els.gridCount.textContent=gridFc.features.length.toLocaleString('id-ID');els.sampleCount.textContent=locations.length.toLocaleString('id-ID');setStatus('Mengambil elevasi DEM untuk '+locations.length+' titik...', '');const samples=await getElevations(locations,params,bbox);if(samples.length<4)throw new Error('Titik elevasi valid kurang dari 4. Coba DEM lain, upload CSV, atau gunakan ROI yang lebih luas.');setStatus('Membuat model interpolasi, raster, kontur, dan 3D...', '');const model=buildInterpolationModel(samples,params,bbox);let surface=computeSurfaceGrid(model,bbox,params.rasterN);if(params.smooth>0)surface=smoothSurface(surface,params.smooth);const stats=surface.stats;const overlayPng=renderOverlay(surface,bbox,params);overlayLayer=L.imageOverlay(overlayPng,[[bbox[1],bbox[0]],[bbox[3],bbox[2]]],{opacity:params.opacity,interactive:false}).addTo(map);drawGridLayer(gridFc,params);drawSampleLayer(samples);const jpg=renderReportJpg(surface,bbox,params,samples,gridFc.features.length);els.resultImage.src=jpg;els.download.href=jpg;lastAnalysis={params,bbox,samples,surface,gridCount:gridFc.features.length};updateResultUi(lastAnalysis);render3D(surface,bbox,params);els.miniStatus.textContent='Hasil tampil';els.results.classList.remove('hidden');setStatus('Hasil selesai. ROI, grid, sampel, overlay, JPG, dan 3D sudah dibuat dari geometri ROI aktif.', 'ok');if(autoScroll)setTimeout(()=>els.results.scrollIntoView({behavior:'smooth',block:'start'}),280)}catch(err){console.error(err);setStatus('Analisis gagal: '+(err.message||err),'error');alert(err.message||'Analisis gagal dijalankan.')}finally{runBtn.disabled=false;runBtn.textContent=old}}
+    function buildGrid(params,bbox){const sizeKm=params.cellSize/1000;let fc;if(params.grid==='hex')fc=turf.hexGrid(bbox,sizeKm,{units:'kilometers'});else if(params.grid==='square')fc=turf.squareGrid(bbox,sizeKm,{units:'kilometers'});else fc=turf.pointGrid(bbox,sizeKm,{units:'kilometers'});fc.features=fc.features.filter(f=>{if(f.geometry.type==='Point'){const c=f.geometry.coordinates;return isInsideRoi(c[0],c[1])}const c=turf.centroid(f).geometry.coordinates;return isInsideRoi(c[0],c[1])||turf.booleanIntersects(f,roiFeature)});if(fc.features.length>1600)fc.features=limitFeatureCollection(fc,1600).features;return fc}
+    function sampleLocationsFromGrid(fc,params,bbox){const pts=[];for(const f of fc.features){let c;if(f.geometry.type==='Point')c=f.geometry.coordinates;else c=turf.centroid(f).geometry.coordinates;if(isInsideRoi(c[0],c[1]))pts.push({lng:c[0],lat:c[1]})}const center=turf.center(roiFeature).geometry.coordinates;if(isInsideRoi(center[0],center[1]))pts.push({lng:center[0],lat:center[1]});const ring=getOuterRing(roiFeature);ring.forEach((c,i)=>{if(i%2===0)pts.push({lng:c[0],lat:c[1]})});if(pts.length<8){const fallback=turf.pointGrid(bbox,Math.max(params.cellSize/2000,.03),{units:'kilometers'});fallback.features.forEach(f=>{const c=f.geometry.coordinates;if(isInsideRoi(c[0],c[1]))pts.push({lng:c[0],lat:c[1]})})}return pts.filter(p=>isInsideRoi(p.lng,p.lat))}
+    function getOuterRing(f){try{return f.geometry.coordinates[0]||[]}catch(e){return[]}}
+    function isInsideRoi(lng,lat){try{return !!roiFeature&&turf.booleanPointInPolygon(turf.point([lng,lat]),roiFeature,{ignoreBoundary:false})}catch(e){return false}}
+    function dedupePoints(pts){const seen=new Set(),out=[];for(const p of pts){const k=p.lng.toFixed(6)+','+p.lat.toFixed(6);if(!seen.has(k)){seen.add(k);out.push(p)}}return out}
+    function limitPoints(pts,max){if(pts.length<=max)return pts;const out=[],step=(pts.length-1)/(max-1);for(let i=0;i<max;i++)out.push(pts[Math.round(i*step)]);return out}
+    function limitFeatureCollection(fc,max){if(fc.features.length<=max)return fc;const out=[],step=(fc.features.length-1)/(max-1);for(let i=0;i<max;i++)out.push(fc.features[Math.round(i*step)]);return turf.featureCollection(out)}
 
-    const drawnItems = new L.FeatureGroup().addTo(map);
-    const drawControl = new L.Control.Draw({
-      draw:{ marker:false, circle:false, circlemarker:false, polyline:false, polygon:{ allowIntersection:false, showArea:true, shapeOptions:{ color:'#62e6ff', weight:3, fillOpacity:.12 } }, rectangle:{ shapeOptions:{ color:'#70ffb8', weight:3, fillOpacity:.10 } } },
-      edit:{ featureGroup:drawnItems, remove:true }
-    });
-    map.addControl(drawControl);
+    async function getElevations(locations,params,bbox){if(params.demKey==='demo')return demoElevations(locations,bbox);if(params.demKey==='csv')return csvElevations(bbox);const chunks=[];for(let i=0;i<locations.length;i+=90)chunks.push(locations.slice(i,i+90));const samples=[];for(let i=0;i<chunks.length;i++){const chunk=chunks[i];const locStr=chunk.map(p=>p.lat.toFixed(6)+','+p.lng.toFixed(6)).join('|');const url='https://api.opentopodata.org/v1/'+params.dem.api+'?locations='+encodeURIComponent(locStr);const res=await fetch(url);if(!res.ok)throw new Error('DEM online gagal dibaca. Status '+res.status+'. Coba dataset lain atau upload CSV elevasi.');const data=await res.json();if(!data.results)throw new Error('Format DEM online tidak valid.');data.results.forEach((r,idx)=>{const z=Number(r.elevation);if(Number.isFinite(z)){samples.push({lng:chunk[idx].lng,lat:chunk[idx].lat,z,source:'DEM'})}});if(i<chunks.length-1)await sleep(1100)}return removeElevationOutliers(samples)}
+    function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+    function demoElevations(locations,bbox){const [w,s,e,n]=bbox,cy=(s+n)/2;return locations.map(p=>{const slope=(p.lat-cy)*80;const local=(pseudoNoise(p.lng*1000,p.lat*1000)-.5)*2.5;return{lng:p.lng,lat:p.lat,z:250+slope+local,source:'demo'}})}
+    function csvElevations(bbox){if(!csvRows.length)throw new Error('CSV belum diupload. Pilih file CSV titik elevasi terlebih dahulu.');const pts=csvRows.filter(p=>p.lng>=bbox[0]&&p.lng<=bbox[2]&&p.lat>=bbox[1]&&p.lat<=bbox[3]&&isInsideRoi(p.lng,p.lat));if(pts.length<4)throw new Error('CSV tidak memiliki minimal 4 titik elevasi di dalam ROI.');return removeElevationOutliers(pts)}
+    function handleCsvUpload(e){const file=e.target.files&&e.target.files[0];if(!file)return;Papa.parse(file,{header:true,dynamicTyping:true,skipEmptyLines:true,complete:res=>{csvRows=parseCsvRows(res.data);setStatus('CSV terbaca: '+csvRows.length.toLocaleString('id-ID')+' titik elevasi valid.',csvRows.length?'ok':'error')},error:err=>setStatus('CSV gagal dibaca: '+err.message,'error')})}
+    function parseCsvRows(rows){const out=[];for(const r of rows){const keys=Object.keys(r);const get=(names)=>{for(const n of names){const k=keys.find(k=>k.toLowerCase().trim()===n);if(k!==undefined)return Number(r[k])}return NaN};const lat=get(['lat','latitude','y']);const lng=get(['lon','lng','longitude','x']);const z=get(['z','elevasi','elevation','elev','dem','height']);if(Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(z))out.push({lat,lng,z,source:'csv'})}return out}
+    function removeElevationOutliers(samples){if(samples.length<8)return samples;const zs=samples.map(p=>p.z).sort((a,b)=>a-b);const q1=zs[Math.floor(zs.length*.25)],q3=zs[Math.floor(zs.length*.75)],iqr=q3-q1,lo=q1-3*iqr,hi=q3+3*iqr;return samples.filter(p=>p.z>=lo&&p.z<=hi)}
+    function pseudoNoise(x,y){const s=Math.sin(x*12.9898+y*78.233)*43758.5453;return s-Math.floor(s)}
 
-    map.on(L.Draw.Event.CREATED, e => setRoi(e.layer));
-    map.on(L.Draw.Event.EDITED, e => { e.layers.eachLayer(layer => setRoi(layer, true)); });
-    map.on(L.Draw.Event.DELETED, () => clearRoi());
+    function buildInterpolationModel(samples,params,bbox){const trend=params.interpolation==='trend'?fitTrend2(samples,bbox):null;const extent=Math.max(bboxWidthMeters(bbox),bboxHeightMeters(bbox));const sigma=Math.max(extent/5,params.cellSize*1.8);return(lng,lat)=>{if(params.interpolation==='nearest')return interpNearest(samples,lng,lat);if(params.interpolation==='rbf')return interpRbf(samples,lng,lat,sigma);if(params.interpolation==='trend')return interpTrend2(trend,samples,lng,lat,bbox);return interpIdw(samples,lng,lat,2)}}
+    function interpIdw(samples,lng,lat,power){let num=0,den=0;for(const s of samples){const d=distanceMeters(lng,lat,s.lng,s.lat);if(d<.05)return s.z;const w=1/Math.pow(d,power);num+=w*s.z;den+=w}return num/den}
+    function interpNearest(samples,lng,lat){let best=samples[0],bd=Infinity;for(const s of samples){const d=distanceMeters(lng,lat,s.lng,s.lat);if(d<bd){bd=d;best=s}}return best.z}
+    function interpRbf(samples,lng,lat,sigma){let num=0,den=0;for(const s of samples){const d=distanceMeters(lng,lat,s.lng,s.lat);const w=Math.exp(-(d*d)/(2*sigma*sigma));num+=w*s.z;den+=w}return den?num/den:interpIdw(samples,lng,lat,2)}
+    function fitTrend2(samples,bbox){const [w,s,e,n]=bbox;const rows=[],b=[];for(const p of samples){const x=(p.lng-w)/(e-w||1),y=(p.lat-s)/(n-s||1);rows.push([1,x,y,x*x,y*y,x*y]);b.push(p.z)}return leastSquares(rows,b)||[mean(samples.map(p=>p.z)),0,0,0,0,0]}
+    function interpTrend2(coef,samples,lng,lat,bbox){const [w,s,e,n]=bbox;const x=(lng-w)/(e-w||1),y=(lat-s)/(n-s||1);const base=coef[0]+coef[1]*x+coef[2]*y+coef[3]*x*x+coef[4]*y*y+coef[5]*x*y;return base*.82+interpIdw(samples,lng,lat,1.7)*.18}
+    function leastSquares(A,b){const m=A[0].length,ATA=Array.from({length:m},()=>Array(m).fill(0)),ATb=Array(m).fill(0);for(let r=0;r<A.length;r++){for(let i=0;i<m;i++){ATb[i]+=A[r][i]*b[r];for(let j=0;j<m;j++)ATA[i][j]+=A[r][i]*A[r][j]}}return solveLinear(ATA,ATb)}
+    function solveLinear(A,b){const n=b.length,M=A.map((r,i)=>r.concat([b[i]]));for(let i=0;i<n;i++){let max=i;for(let k=i+1;k<n;k++)if(Math.abs(M[k][i])>Math.abs(M[max][i]))max=k;if(Math.abs(M[max][i])<1e-10)return null;[M[i],M[max]]=[M[max],M[i]];const piv=M[i][i];for(let j=i;j<=n;j++)M[i][j]/=piv;for(let k=0;k<n;k++){if(k===i)continue;const f=M[k][i];for(let j=i;j<=n;j++)M[k][j]-=f*M[i][j]}}return M.map(r=>r[n])}
+    function distanceMeters(lng1,lat1,lng2,lat2){const ml=((lat1+lat2)/2)*Math.PI/180,dx=(lng2-lng1)*111320*Math.cos(ml),dy=(lat2-lat1)*110574;return Math.sqrt(dx*dx+dy*dy)+.0001}function bboxWidthMeters(b){return distanceMeters(b[0],(b[1]+b[3])/2,b[2],(b[1]+b[3])/2)}function bboxHeightMeters(b){return distanceMeters((b[0]+b[2])/2,b[1],(b[0]+b[2])/2,b[3])}function mean(arr){return arr.reduce((a,b)=>a+b,0)/Math.max(1,arr.length)}
 
-    function setStatus(html, type=''){
-      const box = $('statusBox'); box.innerHTML = html; box.className = 'status' + (type ? ' ' + type : '');
-    }
-    function setRoi(layer, skipFit=false){
-      drawnItems.clearLayers(); drawnItems.addLayer(layer); state.roiLayer = layer; state.roiGeo = layer.toGeoJSON();
-      if (state.roiGeo.geometry.type === 'Feature') state.roiGeo = state.roiGeo.geometry;
-      if (!skipFit) map.fitBounds(layer.getBounds(), { padding:[30,30] });
-      updateSummary(); clearOutputs(false); setStatus('ROI sudah dibuat. Pilih DEM dan metode interpolasi, lalu klik <b>Tampilkan Analisis</b>.', 'ok');
-    }
-    function clearRoi(){
-      drawnItems.clearLayers(); state.roiLayer=null; state.roiGeo=null; clearMapAnalysis(); updateSummary(); clearOutputs(false); setStatus('ROI dibersihkan. Gambar ROI baru di peta.', '');
-    }
-    $('btnClear').addEventListener('click', clearRoi);
-    $('btnExampleRoi').addEventListener('click', () => {
-      const coords = [[-7.733,110.376],[-7.733,110.410],[-7.763,110.410],[-7.763,110.376]];
-      setRoi(L.polygon(coords, { color:'#62e6ff', weight:3, fillOpacity:.12 }));
-    });
+    function computeSurfaceGrid(model,bbox,n){const [w,s,e,north]=bbox,xs=[],ys=[],z=[];let min=Infinity,max=-Infinity,sum=0,count=0;for(let ix=0;ix<n;ix++)xs.push(w+ix/(n-1)*(e-w));for(let iy=0;iy<n;iy++)ys.push(north-iy/(n-1)*(north-s));for(let iy=0;iy<n;iy++){const row=[];for(let ix=0;ix<n;ix++){const lng=xs[ix],lat=ys[iy];if(isInsideRoi(lng,lat)){const val=model(lng,lat);row.push(val);min=Math.min(min,val);max=Math.max(max,val);sum+=val;count++}else row.push(null)}z.push(row)}return{xs,ys,z,n,stats:{min,max,mean:sum/Math.max(1,count),relief:max-min,count}}}
+    function smoothSurface(surface,level){let cur=surface.z.map(r=>r.slice());const n=surface.n;for(let pass=0;pass<level;pass++){const next=cur.map(r=>r.slice());for(let y=1;y<n-1;y++){for(let x=1;x<n-1;x++){if(cur[y][x]===null)continue;let sum=cur[y][x]*4,w=4;for(const [dx,dy,ww] of [[-1,0,2],[1,0,2],[0,-1,2],[0,1,2],[-1,-1,1],[1,-1,1],[-1,1,1],[1,1,1]]){const v=cur[y+dy][x+dx];if(v!==null){sum+=v*ww;w+=ww}}next[y][x]=sum/w}}cur=next}const s={...surface,z:cur};recalcStats(s);return s}
+    function recalcStats(surface){let min=Infinity,max=-Infinity,sum=0,count=0;surface.z.forEach(row=>row.forEach(v=>{if(v!==null){min=Math.min(min,v);max=Math.max(max,v);sum+=v;count++}}));surface.stats={min,max,mean:sum/Math.max(1,count),relief:max-min,count}}
 
-    ['gridSize','rasterRes','maxSamples','contourCount'].forEach(id => {
-      $(id).addEventListener('input', () => { $(id+'Val').textContent = $(id).value; updateSummary(); });
-    });
-    ['demSource','gridMethod','interpMethod','smoothLevel','zExag','outputSize'].forEach(id => $(id).addEventListener('change', () => { $('csvField').style.display = $('demSource').value === 'csv' ? 'block':'none'; updateSummary(); }));
-    $('btnRun').addEventListener('click', runAnalysis);
-    $('btnRunTop').addEventListener('click', runAnalysis);
-    $('btnDownload').addEventListener('click', () => {
-      if (!state.canvasData) return;
-      const a = document.createElement('a');
-      a.href = state.canvasData; a.download = 'hasil_interpolasi_dem_webgis.jpg'; a.click();
-    });
-
-    function updateSummary(){
-      const area = state.roiGeo ? turf.area({type:'Feature', properties:{}, geometry:state.roiGeo})/1000000 : 0;
-      const items = [
-        ['Luas ROI', area ? area.toFixed(area < 1 ? 4 : 2) + ' km²' : 'Belum dibuat'],
-        ['DEM', textOf('demSource')], ['Grid', textOf('gridMethod')], ['Interpolasi', textOf('interpMethod')],
-        ['Raster', $('rasterRes').value + ' sel'], ['Sampel maks.', $('maxSamples').value + ' titik']
-      ];
-      $('summaryList').innerHTML = items.map(([a,b]) => `<li><span>${a}</span><b>${b}</b></li>`).join('');
-    }
-    function textOf(id){ const el=$(id); return el.options[el.selectedIndex].text; }
-    updateSummary();
-
-    function clearOutputs(remove=true){
-      if (remove) clearMapAnalysis();
-      ['results','statsSection','surfaceSection','detailSection'].forEach(id => $(id).classList.remove('show'));
-      $('btnDownload').disabled = true; state.canvasData = null;
-    }
-    function clearMapAnalysis(){
-      if (state.imageOverlay) map.removeLayer(state.imageOverlay); state.imageOverlay=null;
-      if (state.gridLayer) map.removeLayer(state.gridLayer); state.gridLayer=null;
-      if (state.sampleLayer) map.removeLayer(state.sampleLayer); state.sampleLayer=null;
-    }
-
-    async function runAnalysis(){
-      try{
-        if (!state.roiGeo && $('demSource').value !== 'notebook') throw new Error('ROI belum dibuat. Gambar polygon/rectangle dulu di peta.');
-        clearOutputs(true);
-        setStatus('Menyiapkan grid dan mengambil titik elevasi DEM...', '');
-        const params = readParams(); state.lastParams = params;
-        let roiFeature = getRoiFeature();
-        if (params.demSource === 'notebook') {
-          roiFeature = notebookRoiFeature();
-          if (!state.roiLayer) setRoi(L.polygon([[-7.735,110.381],[-7.735,110.405],[-7.759,110.405],[-7.759,110.381]], { color:'#62e6ff', weight:3, fillOpacity:.12 }));
-        }
-        state.ref = makeProjectionRef(roiFeature);
-        state.gridFeatures = createGrid(roiFeature, params.gridMethod, params.gridSize, params.maxSamples);
-        if (state.gridFeatures.samples.length < 6 && params.demSource !== 'notebook') throw new Error('Titik grid di dalam ROI terlalu sedikit. Perbesar ROI atau kecilkan ukuran grid.');
-
-        let samples = await collectElevationSamples(params, state.gridFeatures.samples, roiFeature);
-        if (samples.length < 6) throw new Error('Titik elevasi valid kurang dari 6. Coba sumber DEM lain, upload CSV, atau perbesar ROI.');
-        const qc = removeOutliers(samples);
-        samples = qc.samples;
-        if (samples.length < 6) throw new Error('Setelah QC outlier, titik elevasi valid kurang dari 6.');
-        state.samples = samples;
-
-        setStatus(`Membuat raster interpolasi ${params.rasterRes} sel dengan metode ${textOf('interpMethod')}...`, '');
-        const raster = await generateRaster(roiFeature, samples, params);
-        state.raster = raster;
-        if (params.smoothLevel > 0) state.raster.z = smoothRaster(state.raster.z, params.smoothLevel);
-        const stats = computeStats(state.raster.z, samples, qc.removed);
-
-        setStatus('Merender output JPG, kontur, overlay peta, dan 3D...', '');
-        renderCanvas(roiFeature, state.gridFeatures, samples, state.raster, stats, params);
-        renderMapOverlay(roiFeature, state.gridFeatures, samples);
-        renderStats(stats, params, samples, qc.removed);
-        render3D(state.raster, params, stats);
-        renderDetails(stats, params, samples, qc.removed);
-        ['results','statsSection','surfaceSection','detailSection'].forEach(id => $(id).classList.add('show'));
-        $('btnDownload').disabled = false;
-        $('results').scrollIntoView({ behavior:'smooth', block:'start' });
-        setStatus(`Analisis selesai. DEM valid: <b>${samples.length}</b> titik; outlier dibuang: <b>${qc.removed}</b>; rentang elevasi raster: <b>${stats.range.toFixed(2)} m</b>.`, 'ok');
-      } catch(err){
-        console.error(err); setStatus(`<b>Analisis gagal:</b> ${err.message}`, 'error');
-      }
-    }
-
-    function readParams(){
-      return {
-        demSource:$('demSource').value, gridMethod:$('gridMethod').value, gridSize:+$('gridSize').value,
-        interpMethod:$('interpMethod').value, rasterRes:+$('rasterRes').value, maxSamples:+$('maxSamples').value,
-        smoothLevel:+$('smoothLevel').value, contourCount:+$('contourCount').value, zExag:+$('zExag').value,
-        outputSize:+$('outputSize').value
-      };
-    }
-    function getRoiFeature(){
-      if (!state.roiGeo) return null;
-      return {type:'Feature', properties:{}, geometry:state.roiGeo};
-    }
-    function notebookRoiFeature(){
-      return turf.polygon([[[110.381,-7.735],[110.405,-7.735],[110.405,-7.759],[110.381,-7.759],[110.381,-7.735]]]);
-    }
-
-    function makeProjectionRef(feature){
-      const c = turf.centroid(feature).geometry.coordinates; const lat0 = c[1], lon0 = c[0];
-      return { lat0, lon0, mx:111320*Math.cos(lat0*Math.PI/180), my:110574 };
-    }
-    function project(lon, lat){ const r = state.ref; return { x:(lon-r.lon0)*r.mx, y:(lat-r.lat0)*r.my }; }
-    function unproject(x,y){ const r = state.ref; return { lon:r.lon0 + x/r.mx, lat:r.lat0 + y/r.my }; }
-    function inside(feature, lon, lat){ return turf.booleanPointInPolygon(turf.point([lon, lat]), feature); }
-    function bboxXY(feature){
-      const b = turf.bbox(feature); const p1=project(b[0], b[1]), p2=project(b[2], b[3]);
-      return { minx:Math.min(p1.x,p2.x), maxx:Math.max(p1.x,p2.x), miny:Math.min(p1.y,p2.y), maxy:Math.max(p1.y,p2.y), bbox:b };
-    }
-
-    function createGrid(feature, method, spacing, maxSamples){
-      const bb = bboxXY(feature); const samples=[]; const features=[];
-      if (method === 'square'){
-        for (let x=bb.minx; x<=bb.maxx; x+=spacing){
-          for (let y=bb.miny; y<=bb.maxy; y+=spacing){
-            const cx=x+spacing/2, cy=y+spacing/2; const c=unproject(cx,cy);
-            if (!inside(feature,c.lon,c.lat)) continue;
-            const corners=[[x,y],[x+spacing,y],[x+spacing,y+spacing],[x,y+spacing],[x,y]].map(([xx,yy]) => { const p=unproject(xx,yy); return [p.lon,p.lat]; });
-            samples.push({lon:c.lon, lat:c.lat, x:cx, y:cy}); features.push(turf.polygon([corners], {type:'square'}));
-          }
-        }
-      } else if (method === 'hex'){
-        const r = spacing/2; const dx = Math.sqrt(3)*r; const dy = 1.5*r; let row=0;
-        for (let y=bb.miny-r; y<=bb.maxy+r; y+=dy){
-          const offset = row % 2 ? dx/2 : 0;
-          for (let x=bb.minx-r; x<=bb.maxx+r; x+=dx){
-            const cx=x+offset, cy=y; const c=unproject(cx,cy); if (!inside(feature,c.lon,c.lat)) continue;
-            const ring=[]; for (let k=0;k<6;k++){ const a=Math.PI/6 + k*Math.PI/3; const p=unproject(cx+r*Math.cos(a), cy+r*Math.sin(a)); ring.push([p.lon,p.lat]); }
-            ring.push(ring[0]); samples.push({lon:c.lon, lat:c.lat, x:cx, y:cy}); features.push(turf.polygon([ring], {type:'hex'}));
-          } row++;
-        }
-      } else {
-        for (let x=bb.minx; x<=bb.maxx; x+=spacing){
-          for (let y=bb.miny; y<=bb.maxy; y+=spacing){
-            const p=unproject(x,y); if (!inside(feature,p.lon,p.lat)) continue;
-            samples.push({lon:p.lon, lat:p.lat, x, y}); features.push(turf.point([p.lon,p.lat], {type:'point'}));
-          }
-        }
-      }
-      const thinned = thinDeterministic(samples, maxSamples);
-      return { samples:thinned, features:features.slice(0, 1800), allCount:samples.length };
-    }
-    function thinDeterministic(arr, max){
-      if (arr.length <= max) return arr;
-      const step = arr.length / max; const out=[];
-      for (let i=0; i<max; i++) out.push(arr[Math.floor(i*step)]);
-      return out;
-    }
-
-    async function collectElevationSamples(params, gridSamples, roiFeature){
-      if (params.demSource === 'notebook') return NOTEBOOK_POINTS.map(p => ({...p, ...project(p.lon,p.lat)}));
-      if (params.demSource === 'csv') return readCsvSamples(roiFeature);
-      return fetchOpenTopo(params.demSource, gridSamples);
-    }
-    async function readCsvSamples(roiFeature){
-      const file = $('csvFile').files[0]; if (!file) throw new Error('Pilih file CSV titik elevasi terlebih dahulu.');
-      const text = await file.text(); const lines = text.trim().split(/\r?\n/).filter(Boolean); if (lines.length < 2) throw new Error('CSV kosong atau tidak memiliki header.');
-      const sep = lines[0].includes(';') ? ';' : ','; const headers = lines[0].split(sep).map(h => h.trim().toLowerCase());
-      const findCol = names => names.map(n => headers.indexOf(n)).find(i => i >= 0);
-      const ilat = findCol(['latitude','lat','y']); const ilon = findCol(['longitude','lon','lng','long','x']); const iz = findCol(['elevasi','elevation','elev','z','dem']);
-      if ([ilat,ilon,iz].some(v => v === undefined)) throw new Error('CSV harus memiliki kolom latitude, longitude, dan elevasi.');
-      let pts=[];
-      for (let i=1;i<lines.length;i++){
-        const cols = lines[i].split(sep).map(v => v.trim()); const lat=+cols[ilat], lon=+cols[ilon], z=+cols[iz];
-        if (Number.isFinite(lat) && Number.isFinite(lon) && Number.isFinite(z)) pts.push({lat,lon,z, ...project(lon,lat)});
-      }
-      const clipped = pts.filter(p => inside(roiFeature,p.lon,p.lat));
-      return clipped.length >= 6 ? clipped : pts;
-    }
-    async function fetchOpenTopo(dataset, pts){
-      const out=[]; const batchSize=95;
-      for (let i=0; i<pts.length; i+=batchSize){
-        const batch = pts.slice(i, i+batchSize);
-        setStatus(`Mengambil DEM online ${dataset}: batch ${Math.floor(i/batchSize)+1}/${Math.ceil(pts.length/batchSize)}...`);
-        const loc = batch.map(p => `${p.lat.toFixed(7)},${p.lon.toFixed(7)}`).join('|');
-        const url = `https://api.opentopodata.org/v1/${dataset}?locations=${encodeURIComponent(loc)}&interpolation=bilinear`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`DEM online gagal dibaca (${res.status}). Coba dataset lain atau upload CSV.`);
-        const json = await res.json(); if (!json.results) throw new Error('Respons DEM tidak memiliki hasil elevasi.');
-        json.results.forEach((r, idx) => {
-          const z = r.elevation;
-          if (Number.isFinite(z)) out.push({...batch[idx], z:+z});
-        });
-        if (i + batchSize < pts.length) await new Promise(resolve => setTimeout(resolve, 1050));
-      }
-      return out;
-    }
-
-    function removeOutliers(samples){
-      if (samples.length < 12) return {samples, removed:0};
-      const zs = samples.map(p=>p.z).sort((a,b)=>a-b); const med = quantile(zs,.5); const abs = zs.map(z=>Math.abs(z-med)).sort((a,b)=>a-b); const mad = quantile(abs,.5) || 1;
-      const lo = med - 5.5*1.4826*mad, hi = med + 5.5*1.4826*mad;
-      const kept = samples.filter(p => p.z >= lo && p.z <= hi);
-      return { samples: kept.length >= 6 ? kept : samples, removed: kept.length >= 6 ? samples.length-kept.length : 0 };
-    }
-    function quantile(sorted, q){ const pos=(sorted.length-1)*q, base=Math.floor(pos), rest=pos-base; return sorted[base+1]!==undefined ? sorted[base]+rest*(sorted[base+1]-sorted[base]) : sorted[base]; }
-
-    async function generateRaster(feature, samples, params){
-      const bb = bboxXY(feature); const w=bb.maxx-bb.minx, h=bb.maxy-bb.miny; const maxDim=params.rasterRes;
-      let nx, ny; if (w >= h){ nx=maxDim; ny=Math.max(30, Math.round(maxDim*h/w)); } else { ny=maxDim; nx=Math.max(30, Math.round(maxDim*w/h)); }
-      if (params.interpMethod === 'kriging' && nx*ny > 12000){ const scale=Math.sqrt(12000/(nx*ny)); nx=Math.max(30,Math.round(nx*scale)); ny=Math.max(30,Math.round(ny*scale)); }
-      const xVals=Array.from({length:nx},(_,i)=>bb.minx + i*w/(nx-1)); const yVals=Array.from({length:ny},(_,j)=>bb.miny + j*h/(ny-1));
-      const predictor = buildPredictor(samples, params.interpMethod);
-      const z = [];
-      for (let j=0;j<ny;j++){
-        const row=[];
-        for (let i=0;i<nx;i++){
-          const p=unproject(xVals[i], yVals[j]);
-          row.push(inside(feature,p.lon,p.lat) ? predictor(xVals[i], yVals[j]) : null);
-        }
-        z.push(row);
-        if (j % 15 === 0) await tick();
-      }
-      return {xVals,yVals,z,nx,ny,bb};
-    }
-    function tick(){ return new Promise(resolve => setTimeout(resolve,0)); }
-
-    function buildPredictor(samples, method){
-      if (method === 'trend'){
-        const coeff = fitTrend(samples); return (x,y) => evalTrend(coeff,x,y);
-      }
-      if (method === 'rbf'){
-        const model = fitRbf(samples); if (model) return (x,y) => evalRbf(model,x,y);
-      }
-      if (method === 'kriging') return (x,y) => krigingPredict(samples,x,y,18);
-      return (x,y) => idwPredict(samples,x,y,2,36);
-    }
-    function nearest(samples,x,y,k){
-      return samples.map(p => ({p, d:Math.hypot(p.x-x,p.y-y)})).sort((a,b)=>a.d-b.d).slice(0,k);
-    }
-    function idwPredict(samples,x,y,power=2,k=36){
-      const ns = nearest(samples,x,y,k); if (ns[0].d < 1e-9) return ns[0].p.z;
-      let num=0, den=0; for (const n of ns){ const w=1/Math.pow(Math.max(n.d,1e-9),power); num += w*n.p.z; den += w; }
-      return num/den;
-    }
-    function krigingPredict(samples,x,y,k=18){
-      const ns = nearest(samples,x,y,k); if (ns[0].d < 1e-9) return ns[0].p.z; const n=ns.length; const A=Array.from({length:n+1},()=>Array(n+2).fill(0));
-      for (let i=0;i<n;i++){
-        for (let j=0;j<n;j++) A[i][j] = Math.hypot(ns[i].p.x-ns[j].p.x, ns[i].p.y-ns[j].p.y);
-        A[i][i] += 1e-8; A[i][n]=1; A[i][n+1]=Math.hypot(ns[i].p.x-x, ns[i].p.y-y);
-      }
-      for (let j=0;j<n;j++) A[n][j]=1; A[n][n]=0; A[n][n+1]=1;
-      const sol = solveLinear(A); if (!sol) return idwPredict(samples,x,y,2,36);
-      let z=0; for (let i=0;i<n;i++) z += sol[i]*ns[i].p.z; return z;
-    }
-    function fitTrend(samples){
-      const A=Array.from({length:6},()=>Array(7).fill(0));
-      for (const p of samples){ const x=p.x/1000, y=p.y/1000; const v=[1,x,y,x*x,x*y,y*y]; for (let r=0;r<6;r++){ for (let c=0;c<6;c++) A[r][c]+=v[r]*v[c]; A[r][6]+=v[r]*p.z; } }
-      return solveLinear(A) || [mean(samples.map(p=>p.z)),0,0,0,0,0];
-    }
-    function evalTrend(c,x,y){ x/=1000; y/=1000; return c[0]+c[1]*x+c[2]*y+c[3]*x*x+c[4]*x*y+c[5]*y*y; }
-    function fitRbf(samples){
-      const pts = thinDeterministic(samples, 80); const n=pts.length; if (n < 6) return null; const m=n+3; const A=Array.from({length:m},()=>Array(m+1).fill(0));
-      const sx = 1000, sy = 1000;
-      const phi = r => r < 1e-9 ? 0 : r*r*Math.log(r);
-      for (let i=0;i<n;i++){
-        const xi=pts[i].x/sx, yi=pts[i].y/sy;
-        for (let j=0;j<n;j++){ const dx=xi-pts[j].x/sx, dy=yi-pts[j].y/sy; A[i][j]=phi(Math.hypot(dx,dy)); }
-        A[i][i] += 1e-9; A[i][n]=1; A[i][n+1]=xi; A[i][n+2]=yi; A[i][m]=pts[i].z;
-        A[n][i]=1; A[n+1][i]=xi; A[n+2][i]=yi;
-      }
-      const sol = solveLinear(A); return sol ? {pts, sol, sx, sy, phi} : null;
-    }
-    function evalRbf(model,x,y){
-      const xx=x/model.sx, yy=y/model.sy, n=model.pts.length; let z=model.sol[n] + model.sol[n+1]*xx + model.sol[n+2]*yy;
-      for (let i=0;i<n;i++){ const dx=xx-model.pts[i].x/model.sx, dy=yy-model.pts[i].y/model.sy; z += model.sol[i]*model.phi(Math.hypot(dx,dy)); }
-      return z;
-    }
-    function solveLinear(A){
-      const n=A.length; for (let i=0;i<n;i++){
-        let max=i; for (let r=i+1;r<n;r++) if (Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
-        if (Math.abs(A[max][i]) < 1e-12) return null;
-        [A[i],A[max]]=[A[max],A[i]]; const piv=A[i][i];
-        for (let c=i;c<=n;c++) A[i][c]/=piv;
-        for (let r=0;r<n;r++) if (r!==i){ const f=A[r][i]; for (let c=i;c<=n;c++) A[r][c]-=f*A[i][c]; }
-      }
-      return A.map(row=>row[n]);
-    }
-
-    function smoothRaster(z, level){
-      let out = z.map(r=>r.slice());
-      for (let iter=0; iter<level; iter++){
-        const src=out.map(r=>r.slice());
-        for (let j=0;j<src.length;j++) for (let i=0;i<src[0].length;i++){
-          if (src[j][i] == null) continue;
-          let sum=0,wsum=0;
-          for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++){
-            const y=j+dy,x=i+dx; if (y<0||x<0||y>=src.length||x>=src[0].length||src[y][x]==null) continue;
-            const w = dx===0&&dy===0 ? 4 : (dx===0||dy===0 ? 2 : 1); sum += src[y][x]*w; wsum += w;
-          }
-          out[j][i] = sum/wsum;
-        }
-      }
-      return out;
-    }
-
-    function computeStats(z, samples, removed){
-      const vals=[]; z.forEach(r=>r.forEach(v=>{ if(Number.isFinite(v)) vals.push(v); })); vals.sort((a,b)=>a-b);
-      const min=vals[0], max=vals[vals.length-1], avg=mean(vals), range=max-min;
-      return {min,max,avg,range,q10:quantile(vals,.1),q50:quantile(vals,.5),q90:quantile(vals,.9), cells:vals.length, sampleMin:Math.min(...samples.map(p=>p.z)), sampleMax:Math.max(...samples.map(p=>p.z)), removed};
-    }
-    function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
-    function colorTerrain(t, alpha=255){
-      t=Math.max(0,Math.min(1,t));
-      const stops=[[0,[28,45,117]],[.18,[35,108,168]],[.34,[78,160,122]],[.52,[120,188,90]],[.70,[210,190,98]],[.86,[165,120,78]],[1,[245,245,238]]];
-      for (let i=0;i<stops.length-1;i++) if (t>=stops[i][0] && t<=stops[i+1][0]){
-        const u=(t-stops[i][0])/(stops[i+1][0]-stops[i][0]); const a=stops[i][1], b=stops[i+1][1]; return [Math.round(a[0]+(b[0]-a[0])*u),Math.round(a[1]+(b[1]-a[1])*u),Math.round(a[2]+(b[2]-a[2])*u),alpha];
-      }
-      return [245,245,238,alpha];
-    }
-
-    function renderCanvas(feature, grid, samples, raster, stats, params){
-      const canvas = $('analysisCanvas'); const W=params.outputSize, H=Math.round(W*0.68); canvas.width=W; canvas.height=H; const ctx=canvas.getContext('2d');
-      ctx.fillStyle='#06101c'; ctx.fillRect(0,0,W,H);
-      const left=95, top=115, right=185, bottom=145; const pw=W-left-right, ph=H-top-bottom; const bb=raster.bb; const rw=bb.maxx-bb.minx, rh=bb.maxy-bb.miny;
-      let sx=pw/rw, sy=ph/rh, s=Math.min(sx,sy); const plotW=rw*s, plotH=rh*s; const ox=left+(pw-plotW)/2, oy=top+(ph-plotH)/2;
-      const xyToCanvas=(x,y)=>[ox+(x-bb.minx)*s, oy+plotH-(y-bb.miny)*s];
-      ctx.save(); roundRect(ctx, ox-10, oy-10, plotW+20, plotH+20, 18); ctx.clip(); ctx.fillStyle='#07111f'; ctx.fillRect(ox-10,oy-10,plotW+20,plotH+20);
-      const nx=raster.nx, ny=raster.ny, cellW=plotW/(nx-1), cellH=plotH/(ny-1);
-      for (let j=0;j<ny-1;j++) for (let i=0;i<nx-1;i++){
-        const vals=[raster.z[j][i],raster.z[j][i+1],raster.z[j+1][i],raster.z[j+1][i+1]].filter(Number.isFinite); if(!vals.length) continue;
-        const v=mean(vals), c=colorTerrain((v-stats.min)/(stats.max-stats.min || 1),235); ctx.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},${c[3]/255})`; ctx.fillRect(ox+i*cellW, oy+j*cellH, cellW+1, cellH+1);
-      }
-      drawContours(ctx, raster, stats, params.contourCount, xyToCanvas);
-      drawGridOnCanvas(ctx, grid, xyToCanvas);
-      drawRoiOutline(ctx, feature, xyToCanvas);
-      for (const p of samples){ const [x,y]=xyToCanvas(p.x,p.y); ctx.beginPath(); ctx.arc(x,y,3.6,0,Math.PI*2); ctx.fillStyle='rgba(5,10,20,.85)'; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle='#fff'; ctx.stroke(); }
-      ctx.restore();
-      ctx.fillStyle='#f4f8ff'; ctx.font='900 36px Inter, sans-serif'; ctx.fillText('Hasil Interpolasi DEM Berbasis ROI', 80, 58);
-      ctx.fillStyle='#9fb0c8'; ctx.font='500 18px Inter, sans-serif'; ctx.fillText(`${textOf('demSource')} · ${textOf('gridMethod')} · ${textOf('interpMethod')} · kontur ${params.contourCount} level`, 82, 88);
-      ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1; ctx.strokeRect(ox,oy,plotW,plotH);
-      ctx.fillStyle='#dbeafe'; ctx.font='800 18px Inter, sans-serif'; ctx.fillText('Longitude / X lokal', ox+plotW/2-80, H-70);
-      ctx.save(); ctx.translate(38, oy+plotH/2+90); ctx.rotate(-Math.PI/2); ctx.fillText('Latitude / Y lokal', 0, 0); ctx.restore();
-      drawLegend(ctx, W-128, top, 28, plotH, stats);
-      drawCanvasInfo(ctx, 80, H-58, stats, params, samples);
-      state.canvasData = canvas.toDataURL('image/jpeg', .94);
-    }
-    function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-    function drawRoiOutline(ctx, feature, xy){
-      const rings = feature.geometry.type === 'Polygon' ? feature.geometry.coordinates : feature.geometry.coordinates[0];
-      ctx.strokeStyle='rgba(255,255,255,.96)'; ctx.lineWidth=3; ctx.setLineDash([]);
-      rings.forEach(r => { ctx.beginPath(); r.forEach(([lon,lat],idx)=>{ const p=project(lon,lat); const [x,y]=xy(p.x,p.y); idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); });
-    }
-    function drawGridOnCanvas(ctx, grid, xy){
-      ctx.save(); ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1; ctx.setLineDash([5,6]);
-      grid.features.forEach(f => { if (f.geometry.type !== 'Polygon') return; const ring=f.geometry.coordinates[0]; ctx.beginPath(); ring.forEach(([lon,lat],idx)=>{ const p=project(lon,lat); const [x,y]=xy(p.x,p.y); idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); });
-      ctx.restore();
-    }
-    function drawContours(ctx, raster, stats, count, xy){
-      const levels=[]; for (let k=1;k<count;k++) levels.push(stats.min + k*(stats.max-stats.min)/count);
-      ctx.save(); ctx.strokeStyle='rgba(8,14,24,.74)'; ctx.lineWidth=1.5;
-      for (const level of levels) marchingSquares(raster, level, seg => { ctx.beginPath(); const [a,b]=seg; const p1=xy(a.x,a.y), p2=xy(b.x,b.y); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.stroke(); });
-      ctx.restore();
-    }
-    function marchingSquares(raster, level, cb){
-      const {xVals,yVals,z,nx,ny}=raster;
-      function interp(p1,p2,v1,v2){ const t=(level-v1)/(v2-v1 || 1e-12); return {x:p1.x+t*(p2.x-p1.x), y:p1.y+t*(p2.y-p1.y)}; }
-      for (let j=0;j<ny-1;j++) for (let i=0;i<nx-1;i++){
-        const v=[z[j][i],z[j][i+1],z[j+1][i+1],z[j+1][i]]; if (v.some(vv=>!Number.isFinite(vv))) continue;
-        const p=[{x:xVals[i],y:yVals[j]},{x:xVals[i+1],y:yVals[j]},{x:xVals[i+1],y:yVals[j+1]},{x:xVals[i],y:yVals[j+1]}]; const pts=[];
-        [[0,1],[1,2],[2,3],[3,0]].forEach(([a,b]) => { if ((v[a] < level && v[b] >= level) || (v[b] < level && v[a] >= level)) pts.push(interp(p[a],p[b],v[a],v[b])); });
-        if (pts.length === 2) cb([pts[0],pts[1]]); else if (pts.length === 4){ cb([pts[0],pts[1]]); cb([pts[2],pts[3]]); }
-      }
-    }
-    function drawLegend(ctx,x,y,w,h,stats){
-      for(let i=0;i<h;i++){ const t=1-i/h, c=colorTerrain(t,255); ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; ctx.fillRect(x,y+i,w,1); }
-      ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.strokeRect(x,y,w,h); ctx.fillStyle='#f4f8ff'; ctx.font='800 14px Inter, sans-serif'; ctx.fillText('Elevasi (m)', x-42, y-18);
-      ctx.font='700 13px Inter, sans-serif'; ctx.fillText(stats.max.toFixed(1), x+w+9, y+5); ctx.fillText(stats.q50.toFixed(1), x+w+9, y+h/2+5); ctx.fillText(stats.min.toFixed(1), x+w+9, y+h+5);
-    }
-    function drawCanvasInfo(ctx,x,y,stats,params,samples){
-      ctx.fillStyle='rgba(255,255,255,.06)'; roundRect(ctx,x-16,y-30,900,76,18); ctx.fill(); ctx.fillStyle='#dbeafe'; ctx.font='800 16px Inter, sans-serif';
-      ctx.fillText(`Min ${stats.min.toFixed(2)} m · Maks ${stats.max.toFixed(2)} m · Mean ${stats.avg.toFixed(2)} m · Relief ${stats.range.toFixed(2)} m`, x, y);
-      ctx.fillStyle='#9fb0c8'; ctx.font='600 13px Inter, sans-serif'; ctx.fillText(`Sampel: ${samples.length} titik · Raster cell valid: ${stats.cells} · Smoothing: ${textOf('smoothLevel')} · Dibuat di browser/GitHub Pages`, x, y+24);
-    }
-
-    function renderMapOverlay(feature, grid, samples){
-      clearMapAnalysis(); const canvas = $('analysisCanvas'); const b = turf.bbox(feature);
-      state.imageOverlay = L.imageOverlay(canvas.toDataURL('image/png'), [[b[1],b[0]],[b[3],b[2]]], {opacity:.72, interactive:false}).addTo(map);
-      state.gridLayer = L.geoJSON({type:'FeatureCollection',features:grid.features}, { style:{ color:'#ffffff', weight:1, opacity:.35, fillOpacity:0 }, pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:2,color:'#fff',weight:1,fillOpacity:.65}) }).addTo(map);
-      state.sampleLayer = L.layerGroup(samples.slice(0,900).map(p => L.circleMarker([p.lat,p.lon], { radius:3, color:'#06101c', weight:1, fillColor:'#fff', fillOpacity:.95 }))).addTo(map);
-    }
-    function renderStats(stats, params, samples, removed){
-      const cards=[['Elevasi Minimum',stats.min.toFixed(2)+' m','Nilai raster terendah di dalam ROI'],['Elevasi Maksimum',stats.max.toFixed(2)+' m','Nilai raster tertinggi di dalam ROI'],['Relief ROI',stats.range.toFixed(2)+' m', stats.range < 10 ? 'Relief kecil; area relatif datar' : 'Selisih tinggi-rendah permukaan'],['Titik DEM Valid',samples.length+' titik', removed ? `${removed} outlier dibuang` : 'Tanpa outlier ekstrem']];
-      $('statCards').innerHTML = cards.map(([a,b,c]) => `<div class="card stat"><span>${a}</span><strong>${b}</strong><em class="small">${c}</em></div>`).join('');
-    }
-    function render3D(raster, params, stats){
-      const xKm=raster.xVals.map(x=>+(x/1000).toFixed(3)); const yKm=raster.yVals.map(y=>+(y/1000).toFixed(3));
-      const z = raster.z.map(row => row.map(v => Number.isFinite(v) ? +(v*params.zExag).toFixed(3) : null));
-      const widthKm=(raster.bb.maxx-raster.bb.minx)/1000, heightKm=(raster.bb.maxy-raster.bb.miny)/1000; const horiz=Math.max(widthKm,heightKm,.1); const zKm=Math.max(stats.range*params.zExag/1000,.001); const zRatio=Math.max(.035, Math.min(.45, zKm/horiz*1.7));
-      const data=[{type:'surface',x:xKm,y:yKm,z:z,colorscale:'Earth',connectgaps:false,contours:{z:{show:true,usecolormap:true,highlightcolor:'#ffffff',project:{z:true}}},colorbar:{title:'Elevasi m'}}];
-      const layout={paper_bgcolor:'#06101c',plot_bgcolor:'#06101c',font:{color:'#eaf3ff'},margin:{l:0,r:0,t:42,b:0},title:{text:`3D Surface - ${textOf('interpMethod')}`,font:{size:16}},scene:{xaxis:{title:'X (km)',gridcolor:'rgba(255,255,255,.25)'},yaxis:{title:'Y (km)',gridcolor:'rgba(255,255,255,.25)'},zaxis:{title:`Elevasi${params.zExag!==1?' × '+params.zExag:''} (m)`,gridcolor:'rgba(255,255,255,.25)'},aspectmode:'manual',aspectratio:{x:1,y:Math.max(.35,Math.min(1,heightKm/Math.max(widthKm,.001))),z:zRatio},camera:{eye:{x:1.35,y:1.35,z:.82}}}};
-      Plotly.newPlot('plot3d', data, layout, {responsive:true, displaylogo:false});
-    }
-    function renderDetails(stats, params, samples, removed){
-      const rows=[['Sumber DEM',textOf('demSource')],['Metode gridding',textOf('gridMethod')],['Ukuran grid',params.gridSize+' m'],['Metode interpolasi',textOf('interpMethod')],['Resolusi raster',`${state.raster.nx} × ${state.raster.ny}`],['Jumlah kontur',params.contourCount+' level'],['Smoothing',textOf('smoothLevel')],['Vertical exaggeration',params.zExag+'×'],['Jumlah sampel valid',samples.length+' titik'],['Outlier dibuang',removed+' titik'],['Rata-rata elevasi',stats.avg.toFixed(2)+' m'],['Median elevasi',stats.q50.toFixed(2)+' m']];
-      $('paramRows').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
-      const relief = stats.range < 5 ? 'sangat datar' : stats.range < 20 ? 'relatif datar sampai bergelombang ringan' : stats.range < 100 ? 'bergelombang sedang' : 'berelief kuat';
-      $('interpretation').innerHTML = `
-        <div class="rec"><span class="tag">Morfologi</span><p>Rentang elevasi ROI sebesar <b>${stats.range.toFixed(2)} m</b>, sehingga area terbaca sebagai <b>${relief}</b>. Tampilan 3D tidak dipaksa menjadi gunung karena aspek-Z mengikuti relief aktual.</p></div>
-        <div class="rec"><span class="tag">Metode</span><p>Interpolasi memakai <b>${textOf('interpMethod')}</b>. Alur ini mengikuti notebook: titik elevasi → grid regular → prediksi nilai raster → kontur dan surface.</p></div>
-        <div class="rec"><span class="tag">Kualitas Data</span><p>DEM valid sebanyak <b>${samples.length}</b> titik. Sistem membuang <b>${removed}</b> outlier ekstrem agar spike DEM tidak membuat puncak palsu pada area yang sebenarnya datar.</p></div>`;
-    }
-
-    window.addEventListener('resize', () => map.invalidateSize());
+    function renderOverlay(surface,bbox,params){const c=els.overlayCanvas;c.width=900;c.height=900;const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);drawSurface(ctx,0,0,c.width,c.height,surface,bbox,false);drawContours(ctx,0,0,c.width,c.height,surface,bbox,params,'rgba(255,255,255,.5)',1);drawRoiPath(ctx,0,0,c.width,c.height,bbox,'#ffffff',4);return c.toDataURL('image/png')}
+    function renderReportJpg(surface,bbox,params,samples,gridCount){const c=els.workCanvas,W=params.quality,H=Math.round(W*.69);c.width=W;c.height=H;const ctx=c.getContext('2d');const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#06101c');grad.addColorStop(.55,'#0b1a30');grad.addColorStop(1,'#10233d');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);const margin=Math.round(W*.035),headerH=Math.round(H*.11),mapX=margin,mapY=headerH,mapW=Math.round(W*.67),mapH=H-headerH-margin,sideX=mapX+mapW+margin,sideW=W-sideX-margin;ctx.fillStyle='#f4f8ff';ctx.font='900 '+Math.round(W*.025)+'px Inter, Arial, sans-serif';ctx.fillText('Hasil Analisis Gridding dan Interpolasi DEM',margin,Math.round(H*.055));ctx.font='500 '+Math.round(W*.0115)+'px Inter, Arial, sans-serif';ctx.fillStyle='#b9c9df';ctx.fillText('ROI aktif • '+params.dem.label+' • '+new Date().toLocaleString('id-ID'),margin,Math.round(H*.083));roundRect(ctx,mapX,mapY,mapW,mapH,22,'rgba(255,255,255,.045)','rgba(255,255,255,.15)');ctx.save();roundedClip(ctx,mapX,mapY,mapW,mapH,22);ctx.fillStyle='#08111f';ctx.fillRect(mapX,mapY,mapW,mapH);drawSurface(ctx,mapX+14,mapY+14,mapW-28,mapH-28,surface,bbox,true);drawGridCanvas(ctx,mapX+14,mapY+14,mapW-28,mapH-28,bbox,params);drawContours(ctx,mapX+14,mapY+14,mapW-28,mapH-28,surface,bbox,params,'rgba(7,16,28,.6)',Math.max(1,W*.001));drawContours(ctx,mapX+14,mapY+14,mapW-28,mapH-28,surface,bbox,params,'rgba(255,255,255,.58)',Math.max(1,W*.0007));drawRoiPath(ctx,mapX+14,mapY+14,mapW-28,mapH-28,bbox,'#ffffff',Math.max(2,W*.0025));drawSamplePoints(ctx,mapX+14,mapY+14,mapW-28,mapH-28,bbox,samples,W);ctx.restore();roundRect(ctx,sideX,mapY,sideW,mapH,22,'rgba(255,255,255,.045)','rgba(255,255,255,.15)');drawReportPanel(ctx,sideX,mapY,sideW,mapH,surface.stats,params,samples,gridCount,W);return c.toDataURL('image/jpeg',.94)}
+    function drawSurface(ctx,x0,y0,w,h,surface,bbox,report){const st=surface.stats,cw=w/(surface.n-1),ch=h/(surface.n-1);ctx.save();pathRoi(ctx,x0,y0,w,h,bbox);ctx.clip();ctx.fillStyle='#08111f';ctx.fillRect(x0,y0,w,h);for(let iy=0;iy<surface.n;iy++){for(let ix=0;ix<surface.n;ix++){const val=surface.z[iy][ix];if(val===null)continue;ctx.fillStyle=colorRamp((val-st.min)/(st.max-st.min||1),report?1:.84);ctx.fillRect(x0+ix*cw,y0+iy*ch,cw+1,ch+1)}}ctx.restore()}
+    function drawContours(ctx,x0,y0,w,h,surface,bbox,params,color,lineWidth){const st=surface.stats;if(!Number.isFinite(st.relief)||st.relief<=0)return;ctx.save();pathRoi(ctx,x0,y0,w,h,bbox);ctx.clip();ctx.strokeStyle=color;ctx.lineWidth=lineWidth;const levels=[];for(let i=1;i<params.contours;i++)levels.push(st.min+i/params.contours*(st.max-st.min));const nx=surface.n,ny=surface.n,cw=w/(nx-1),ch=h/(ny-1);for(const lev of levels){ctx.beginPath();for(let y=0;y<ny-1;y++){for(let x=0;x<nx-1;x++){const v=[surface.z[y][x],surface.z[y][x+1],surface.z[y+1][x+1],surface.z[y+1][x]];if(v.some(q=>q===null))continue;const pts=[];function edge(v1,v2,x1,y1,x2,y2){if((lev>=Math.min(v1,v2))&&(lev<=Math.max(v1,v2))&&v1!==v2){const t=(lev-v1)/(v2-v1);pts.push([x1+(x2-x1)*t,y1+(y2-y1)*t])}}const X=x0+x*cw,Y=y0+y*ch;edge(v[0],v[1],X,Y,X+cw,Y);edge(v[1],v[2],X+cw,Y,X+cw,Y+ch);edge(v[2],v[3],X+cw,Y+ch,X,Y+ch);edge(v[3],v[0],X,Y+ch,X,Y);if(pts.length>=2){ctx.moveTo(pts[0][0],pts[0][1]);ctx.lineTo(pts[1][0],pts[1][1]);if(pts.length===4){ctx.moveTo(pts[2][0],pts[2][1]);ctx.lineTo(pts[3][0],pts[3][1])}}}}ctx.stroke()}ctx.restore()}
+    function drawGridLayer(fc,params){if(params.grid==='point'){gridLayer=L.geoJSON(fc,{pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:2.2,color:'#ffffff',weight:1,fillColor:'#62e6ff',fillOpacity:.85})}).addTo(map)}else{gridLayer=L.geoJSON(fc,{style:{color:'#ffffff',weight:.8,opacity:.42,fillOpacity:0}}).addTo(map)}}
+    function drawSampleLayer(samples){const max=260,step=Math.max(1,Math.ceil(samples.length/max));const features=samples.filter((_,i)=>i%step===0).map(p=>turf.point([p.lng,p.lat],{z:p.z}));sampleLayer=L.geoJSON(turf.featureCollection(features),{pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:3,color:'#06101c',weight:.8,fillColor:'#ffd166',fillOpacity:.92}),onEachFeature:(f,l)=>l.bindPopup('Elevasi sampel: <b>'+Number(f.properties.z).toFixed(2)+' m</b>')}).addTo(map)}
+    function drawGridCanvas(ctx,x0,y0,w,h,bbox,params){const fc=buildGrid(params,bbox);ctx.save();pathRoi(ctx,x0,y0,w,h,bbox);ctx.clip();ctx.strokeStyle='rgba(255,255,255,.38)';ctx.fillStyle='rgba(255,255,255,.78)';ctx.lineWidth=1;for(const f of fc.features){if(f.geometry.type==='Point'){const c=f.geometry.coordinates,p=lngLatToCanvas(c[0],c[1],x0,y0,w,h,bbox);ctx.beginPath();ctx.arc(p.x,p.y,1.6,0,Math.PI*2);ctx.fill()}else{for(const ring of f.geometry.coordinates){ctx.beginPath();ring.forEach((c,i)=>{const p=lngLatToCanvas(c[0],c[1],x0,y0,w,h,bbox);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)});ctx.closePath();ctx.stroke()}}}ctx.restore()}
+    function drawRoiPath(ctx,x0,y0,w,h,bbox,color,lineWidth){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.shadowColor='rgba(0,0,0,.65)';ctx.shadowBlur=8;pathRoi(ctx,x0,y0,w,h,bbox);ctx.stroke();ctx.restore()}
+    function pathRoi(ctx,x0,y0,w,h,bbox){const ring=getOuterRing(roiFeature);ctx.beginPath();ring.forEach((c,i)=>{const p=lngLatToCanvas(c[0],c[1],x0,y0,w,h,bbox);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)});ctx.closePath()}
+    function drawSamplePoints(ctx,x0,y0,w,h,bbox,samples,W){ctx.save();ctx.fillStyle='#ffd166';ctx.strokeStyle='#06101c';ctx.lineWidth=Math.max(1,W*.001);const max=220,step=Math.max(1,Math.ceil(samples.length/max));samples.filter((_,i)=>i%step===0).forEach(p=>{const q=lngLatToCanvas(p.lng,p.lat,x0,y0,w,h,bbox);ctx.beginPath();ctx.arc(q.x,q.y,Math.max(2,W*.0022),0,Math.PI*2);ctx.fill();ctx.stroke()});ctx.restore()}
+    function drawReportPanel(ctx,x,y,w,h,stats,params,samples,gridCount,W){const pad=Math.round(W*.018);let cy=y+pad;ctx.fillStyle='#f4f8ff';ctx.font='900 '+Math.round(W*.017)+'px Inter, Arial, sans-serif';ctx.fillText('Ringkasan Output',x+pad,cy);cy+=Math.round(W*.025);const rows=[['DEM',params.dem.label],['Gridding',gridLabels[params.grid]],['Ukuran grid',params.cellSize+' m'],['Interpolasi',interpLabels[params.interpolation]],['Luas ROI',formatArea(turf.area(roiFeature))],['Titik sampel',samples.length.toLocaleString('id-ID')],['Jumlah grid',gridCount.toLocaleString('id-ID')],['Elevasi min',stats.min.toFixed(2)+' m'],['Elevasi rerata',stats.mean.toFixed(2)+' m'],['Elevasi max',stats.max.toFixed(2)+' m'],['Relief',stats.relief.toFixed(2)+' m']];ctx.font='700 '+Math.round(W*.0105)+'px Inter, Arial, sans-serif';rows.forEach((row,idx)=>{const rowY=cy+idx*Math.round(W*.023);ctx.fillStyle=idx%2===0?'rgba(255,255,255,.055)':'rgba(255,255,255,.025)';roundedRectOnly(ctx,x+pad,rowY-Math.round(W*.015),w-pad*2,Math.round(W*.02),9);ctx.fill();ctx.fillStyle='#9fb0c8';ctx.fillText(row[0],x+pad+10,rowY);ctx.fillStyle='#ffffff';wrapText(ctx,row[1],x+w*.48,rowY,w*.43,Math.round(W*.012),1)});const legendY=y+h-Math.round(W*.105);ctx.fillStyle='#f4f8ff';ctx.font='900 '+Math.round(W*.012)+'px Inter, Arial, sans-serif';ctx.fillText('Legenda elevasi',x+pad,legendY);const lgX=x+pad,lgY=legendY+Math.round(W*.018),lgW=w-pad*2,lgH=Math.round(W*.014);for(let i=0;i<lgW;i++){ctx.fillStyle=colorRamp(i/(lgW-1),1);ctx.fillRect(lgX+i,lgY,1,lgH)}ctx.strokeStyle='rgba(255,255,255,.24)';ctx.strokeRect(lgX,lgY,lgW,lgH);ctx.fillStyle='#cbd8ed';ctx.font='700 '+Math.round(W*.0095)+'px Inter, Arial, sans-serif';ctx.fillText(stats.min.toFixed(1)+' m',lgX,lgY+lgH+Math.round(W*.014));ctx.textAlign='right';ctx.fillText(stats.max.toFixed(1)+' m',lgX+lgW,lgY+lgH+Math.round(W*.014));ctx.textAlign='left'}
+    function lngLatToCanvas(lng,lat,x0,y0,w,h,bbox){const[west,south,east,north]=bbox;return{x:x0+(lng-west)/(east-west||1)*w,y:y0+(north-lat)/(north-south||1)*h}}
+    function colorRamp(t,alpha=1){t=Math.max(0,Math.min(1,t));const stops=[[0,[37,52,148]],[.22,[44,127,184]],[.45,[65,182,196]],[.64,[161,218,180]],[.82,[255,255,204]],[1,[240,59,32]]];for(let i=0;i<stops.length-1;i++){const[a,ca]=stops[i],[b,cb]=stops[i+1];if(t>=a&&t<=b){const u=(t-a)/(b-a||1),r=Math.round(ca[0]+(cb[0]-ca[0])*u),g=Math.round(ca[1]+(cb[1]-ca[1])*u),bl=Math.round(ca[2]+(cb[2]-ca[2])*u);return'rgba('+r+','+g+','+bl+','+alpha+')'}}return'rgba(240,59,32,'+alpha+')'}
+    function render3D(surface,bbox,params){const [west,south,east,north]=bbox,meanLat=(south+north)/2,cLng=(west+east)/2,cLat=(south+north)/2,wKm=Math.max(.001,bboxWidthMeters(bbox)/1000),hKm=Math.max(.001,bboxHeightMeters(bbox)/1000),relief=Math.max(0.001,surface.stats.relief),zRatio=Math.max(.03,Math.min(.75,(relief/1000)/Math.max(wKm,hKm)*params.zExag*2.2));const x=surface.xs.map(lng=>(lng-cLng)*111.32*Math.cos(meanLat*Math.PI/180)),y=surface.ys.map(lat=>(lat-cLat)*110.574),m=surface.stats.mean,z=surface.z.map(row=>row.map(v=>v===null?null:m+(v-m)*params.zExag));const data=[{type:'surface',x,y,z,colorscale:'Viridis',connectgaps:false,contours:{z:{show:true,usecolormap:true,project:{z:true}}},colorbar:{title:'Elevasi (m)'}}];const layout={margin:{l:0,r:0,b:0,t:32},paper_bgcolor:'#08111f',plot_bgcolor:'#08111f',font:{family:'Inter, Arial, sans-serif',color:'#dbeafe'},title:{text:params.dem.label+' • '+interpLabels[params.interpolation]+' • Z '+params.zExag+'×',font:{size:14}},scene:{xaxis:{title:'X (km)',gridcolor:'rgba(255,255,255,.13)',color:'#dbeafe'},yaxis:{title:'Y (km)',gridcolor:'rgba(255,255,255,.13)',color:'#dbeafe'},zaxis:{title:'Elevasi (m)',gridcolor:'rgba(255,255,255,.13)',color:'#dbeafe'},aspectmode:'manual',aspectratio:{x:1,y:Math.max(.35,Math.min(1.4,hKm/wKm)),z:zRatio},camera:{eye:{x:1.45,y:1.45,z:.82}}}};Plotly.newPlot('surface3d',data,layout,{responsive:true,displaylogo:false})}
+    function updateResultUi(a){const{params,surface,samples,gridCount}=a,st=surface.stats,area=turf.area(roiFeature),reliefClass=st.relief>160?'Relief tinggi':st.relief>70?'Relief sedang':'Relief rendah';els.metrics.innerHTML=`<article class="card result-card"><div class="icon">🗺️</div><h3>Luas ROI</h3><strong>${formatArea(area)}</strong><span>Area polygon aktif</span><em>Dihitung dari GeoJSON ROI yang terbaca di peta.</em></article><article class="card result-card"><div class="icon">⛰️</div><h3>Elevasi rerata</h3><strong>${st.mean.toFixed(2)} m</strong><span>Min ${st.min.toFixed(2)} m • Max ${st.max.toFixed(2)} m</span><em>Nilai berasal dari raster interpolasi dalam ROI.</em></article><article class="card result-card"><div class="icon">▦</div><h3>Jumlah grid</h3><strong>${gridCount.toLocaleString('id-ID')}</strong><span>${gridLabels[params.grid]} ${params.cellSize} m</span><em>Grid dibuat dari bbox lalu difilter memakai ROI.</em></article><article class="card result-card"><div class="icon">📈</div><h3>Kelas relief</h3><strong>${reliefClass}</strong><span>Relief ${st.relief.toFixed(2)} m</span><em>Aspek-Z 3D otomatis mengikuti relief.</em></article>`;const note=params.interpolation==='idw'?'IDW memberi bobot terbesar pada titik terdekat sehingga transisi permukaan cenderung bertahap.':params.interpolation==='nearest'?'Nearest Neighbor mempertahankan nilai titik terdekat sehingga permukaan tampak berblok.':params.interpolation==='rbf'?'RBF menghasilkan permukaan lebih halus karena bobot radial melemah mengikuti jarak.':'Trend Surface membaca kecenderungan umum elevasi melalui polynomial orde 2 dan tetap diberi koreksi lokal.';els.narrative.innerHTML=`ROI terbaca dengan luas <b>${formatArea(area)}</b>. Gridding menggunakan <b>${gridLabels[params.grid]}</b> berukuran <b>${params.cellSize} meter</b>, menghasilkan <b>${gridCount.toLocaleString('id-ID')}</b> fitur grid dan <b>${samples.length.toLocaleString('id-ID')}</b> titik elevasi valid. Elevasi interpolasi berada pada rentang <b>${st.min.toFixed(2)}–${st.max.toFixed(2)} meter</b>, rerata <b>${st.mean.toFixed(2)} meter</b>, dan relief <b>${st.relief.toFixed(2)} meter</b>. ${note}`;const rows=[['DEM',params.dem.label,params.demKey==='csv'?'Berasal dari file CSV pengguna.':params.demKey==='demo'?'Data uji datar untuk validasi ROI.':'Dibaca dari API OpenTopoData.'],['Luas ROI',formatArea(area),'Dihitung dari polygon ROI menggunakan Turf.js.'],['Metode gridding',gridLabels[params.grid],'Bentuk grid untuk sampel dan overlay.'],['Ukuran grid',params.cellSize+' m','Semakin kecil, sampel semakin rapat.'],['Metode interpolasi',interpLabels[params.interpolation],'Metode pembentukan permukaan dari titik elevasi.'],['Titik elevasi',samples.length.toLocaleString('id-ID'),'Titik valid di dalam ROI.'],['Raster',params.rasterN+' × '+params.rasterN,'Matriks output untuk JPG dan 3D.'],['Smoothing',params.smooth===0?'Tidak':params.smooth===1?'Ringan':'Sedang','Diterapkan setelah interpolasi agar kontur lebih stabil.'],['Elevasi minimum',st.min.toFixed(2)+' m','Nilai terendah pada matriks ROI.'],['Elevasi maksimum',st.max.toFixed(2)+' m','Nilai tertinggi pada matriks ROI.'],['Relief',st.relief.toFixed(2)+' m','Selisih elevasi maksimum dan minimum.']];els.summaryTable.innerHTML=rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}
+    function copySummary(){if(!lastAnalysis){alert('Belum ada hasil untuk disalin.');return}const{params,surface,samples,gridCount}=lastAnalysis,st=surface.stats;const text=`Ringkasan WebGIS DEM\nDEM: ${params.dem.label}\nLuas ROI: ${formatArea(turf.area(roiFeature))}\nGridding: ${gridLabels[params.grid]} ${params.cellSize} m\nInterpolasi: ${interpLabels[params.interpolation]}\nTitik elevasi: ${samples.length}\nJumlah grid: ${gridCount}\nElevasi min: ${st.min.toFixed(2)} m\nElevasi rerata: ${st.mean.toFixed(2)} m\nElevasi max: ${st.max.toFixed(2)} m\nRelief: ${st.relief.toFixed(2)} m`;navigator.clipboard.writeText(text).then(()=>alert('Ringkasan berhasil disalin.')).catch(()=>alert(text))}
+    function roundRect(ctx,x,y,w,h,r,fill,stroke){roundedRectOnly(ctx,x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}function roundedRectOnly(ctx,x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath()}function roundedClip(ctx,x,y,w,h,r){roundedRectOnly(ctx,x,y,w,h,r);ctx.clip()}function wrapText(ctx,text,x,y,maxWidth,lineHeight,maxLines=2){const words=String(text).split(' ');let line='',lines=0;for(let n=0;n<words.length;n++){const test=line+words[n]+' ';if(ctx.measureText(test).width>maxWidth&&n>0){ctx.fillText(line.trim(),x,y);line=words[n]+' ';y+=lineHeight;lines++;if(lines>=maxLines-1)break}else line=test}ctx.fillText(line.trim(),x,y)}
   </script>
 </body>
 </html>
